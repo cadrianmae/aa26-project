@@ -13,6 +13,10 @@
 ##   2. [member agent] is typed [CharacterBody3D] rather than the agent class,
 ##      because two scripts whose [code]class_name[/code]s reference each other
 ##      are a cyclic dependency that GDScript rejects at parse time.
+##      However, this class reads [code]agent.max_speed[/code], which no base
+##      [CharacterBody3D] provides. That coupling is by convention, not enforced
+##      by the type: the parent must be an agent script that defines it, or this
+##      fails at run time with [code]Invalid get index 'max_speed'[/code].
 class_name SteeringBehaviour
 extends Node
 
