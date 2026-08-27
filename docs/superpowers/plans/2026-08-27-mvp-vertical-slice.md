@@ -22,6 +22,9 @@
 - **Language:** British and Irish English in all prose. Student number **C21348423** in the README.
 - **Mae authors** `swarm_unit.gd`'s force accumulation and every FSM state. Those arrive as `TODO(human)`.
 - **No emoji or non-ASCII symbols** in code or documents.
+- **Commit messages are ONE LINE**, in Conventional Commits form:
+  `type(scope): message` or `type: message`. No body, no trailers, no co-author
+  lines. `git commit -m "feat(steering): add arrive behaviour"` and nothing more.
 
 ---
 
@@ -62,10 +65,6 @@ config/description="CMPU 4031 Autonomous Agents artifact. Mae Capacite C21348423
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
 
-[editor_plugins]
-
-enabled=PackedStringArray("res://addons/debug_draw_3d/plugin.cfg")
-
 [input]
 
 move_forward={
@@ -96,8 +95,17 @@ fire={
 [rendering]
 
 renderer/rendering_method="forward_plus"
+rendering_device/driver.windows="d3d12"
 environment/defaults/default_clear_color=Color(0.02, 0.02, 0.04, 1)
 ```
+
+`debug_draw_3d` needs no `[editor_plugins]` entry. It is a pure GDExtension:
+it self-registers through `debug_draw_3d.gdextension` and never uses the
+classic `plugin.cfg` mechanism. Enabling a plugin.cfg that does not exist is
+a silent editor-only failure that headless boots do not catch.
+
+The Windows rendering driver is set because a Windows export may be needed;
+the addon's Windows binaries are retained for the same reason.
 
 Note: the `[input]` block above is the shape, not the literal serialisation. Godot rewrites it on save. If the hand-written form fails to parse, define the five actions in **Project Settings > Input Map** in the editor instead and let Godot write the file.
 
