@@ -25,8 +25,24 @@ var projected: Vector3 = Vector3.ZERO
 
 func _ready() -> void:
 	super()
+	# [member leader] is an optional editor override, kept so the Inspector
+	# still works and the wiring is visible while debugging. It cannot be
+	# relied on: overrides patched into an instanced sub-scene are keyed on
+	# child index and get silently pruned when the scene is re-saved in the
+	# editor, and a unit spawned at run time by a factory has no scene-authored
+	# reference at all. So when it is unset, resolve it from the per-faction
+	# "commander_<allegiance>" group that [Ship] joins on ready -- this works
+	# identically whether the unit came from the scene file or was spawned.
+	if leader == null:
+		var unit: SwarmUnit = agent as SwarmUnit
+		if unit != null:
+			leader = get_tree().get_first_node_in_group(
+				"commander_" + str(unit.allegiance)
+			)
 	# Deferred because the leader's global transform may not be settled during
-	# _ready(). Duggan uses call_deferred here for the same reason.
+	# _ready(). Duggan uses call_deferred here for the same reason. Resolving
+	# leader above, before this call is queued, ensures _capture_offset() sees
+	# the resolved leader rather than running before it exists.
 	call_deferred("_capture_offset")
 
 

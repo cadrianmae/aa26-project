@@ -33,6 +33,12 @@ var force: Vector3 = Vector3.ZERO
 
 func _ready() -> void:
 	_collect_behaviours()
+	# Join a per-faction group so swarm units can find their commander at run
+	# time rather than through a scene-authored NodePath. Editor overrides
+	# patched into instanced sub-scenes get pruned on re-save, and units
+	# spawned at run time by a factory never have a scene-authored reference
+	# at all, so group lookup is the only wiring that works in both cases.
+	add_to_group("commander_" + str(allegiance))
 
 
 ## Cache the child behaviours once rather than walking the child list every
