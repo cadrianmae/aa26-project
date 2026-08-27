@@ -3,6 +3,8 @@
 [ext_resource type="PackedScene" path="res://scenes/ships/commander_ship.tscn" id="1_o6xl0"]
 [ext_resource type="PackedScene" path="res://scenes/units/swarm_unit.tscn" id="3_85g3d"]
 [ext_resource type="Script" uid="uid://btxnggqj3n2nw" path="res://scripts/control/follow_camera.gd" id="7_trceg"]
+[ext_resource type="Script" path="res://scripts/audio/music_director.gd" id="8_musdir"]
+[ext_resource type="AudioStream" path="res://assets/audio/launch_theme.ogg" id="9_launch"]
 
 [sub_resource type="Environment" id="Environment_a8y0u"]
 background_mode = 1
@@ -36,3 +38,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, -6)
 [node name="Camera3D" type="Camera3D" parent="." unique_id=419878312 node_paths=PackedStringArray("target")]
 script = ExtResource("7_trceg")
 target = NodePath("../CommanderShip")
+
+[node name="MusicDirector" type="AudioStreamPlayer" parent="."]
+script = ExtResource("8_musdir")
+launch_theme = ExtResource("9_launch")
