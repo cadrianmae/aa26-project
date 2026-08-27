@@ -15,7 +15,8 @@ extends Camera3D
 @export var height: float = 34.0
 
 ## How far back along world -Z the camera sits, which sets the tilt angle.
-## With the default height this is roughly 60 degrees from vertical.
+## With the default height this is roughly 30 degrees from vertical, which is
+## roughly 60 degrees above the horizontal.
 @export var distance: float = 20.0
 
 ## How quickly the camera catches up. Higher is snappier.
@@ -25,7 +26,7 @@ extends Camera3D
 func _physics_process(delta: float) -> void:
 	if target == null:
 		return
-	var desired: Vector3 = target.global_position + Vector3(0.0, height, distance)
+	var desired: Vector3 = target.global_position + Vector3(0.0, height, -distance)
 	global_position = global_position.lerp(desired, delta * smoothing)
 	var to_target: Vector3 = target.global_position - global_position
 	if to_target.length() == 0.0:
