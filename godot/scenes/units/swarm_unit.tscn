@@ -1,4 +1,4 @@
-[gd_scene format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/agents/swarm_unit.gd" id="1_20mkj"]
 [ext_resource type="Script" path="res://scripts/world/wireframe_hull.gd" id="2_8ol4v"]
@@ -7,15 +7,15 @@
 [sub_resource type="SphereShape3D" id="SphereShape3D_2n87u"]
 radius = 0.7
 
-[node name="SwarmUnit" type="CharacterBody3D" unique_id=1696000468]
+[node name="SwarmUnit" type="CharacterBody3D"]
 motion_mode = 1
 script = ExtResource("1_20mkj")
 
-[node name="Hull" type="MeshInstance3D" parent="." unique_id=1600323256]
+[node name="Hull" type="MeshInstance3D" parent="."]
 script = ExtResource("2_8ol4v")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=923413146]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 shape = SubResource("SphereShape3D_2n87u")
 
-[node name="OffsetPursue" type="Node" parent="." unique_id=89968610]
+[node name="OffsetPursue" type="Node" parent="."]
 script = ExtResource("3_wvh5g")

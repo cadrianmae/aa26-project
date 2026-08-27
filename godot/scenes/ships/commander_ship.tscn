@@ -1,4 +1,4 @@
-[gd_scene format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/agents/ship.gd" id="1_orgs7"]
 [ext_resource type="Script" path="res://scripts/world/wireframe_hull.gd" id="2_rneqq"]
@@ -7,17 +7,17 @@
 [sub_resource type="BoxShape3D" id="BoxShape3D_3h2om"]
 size = Vector3(2.4, 0.6, 4)
 
-[node name="CommanderShip" type="CharacterBody3D" unique_id=1016216681]
+[node name="CommanderShip" type="CharacterBody3D"]
 motion_mode = 1
 script = ExtResource("1_orgs7")
 
-[node name="Hull" type="MeshInstance3D" parent="." unique_id=1667168839]
+[node name="Hull" type="MeshInstance3D" parent="."]
 script = ExtResource("2_rneqq")
 hull_shape = 0
 hull_scale = 2.0
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=239870020]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 shape = SubResource("BoxShape3D_3h2om")
 
-[node name="PlayerSteering" type="Node" parent="." unique_id=1660525351]
+[node name="PlayerSteering" type="Node" parent="."]
 script = ExtResource("3_st06i")
