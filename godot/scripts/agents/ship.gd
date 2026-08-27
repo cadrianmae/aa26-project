@@ -32,6 +32,13 @@ var force: Vector3 = Vector3.ZERO
 
 
 func _ready() -> void:
+	_collect_behaviours()
+
+
+## Cache the child behaviours once rather than walking the child list every
+## physics frame. Call again if behaviours are added at run time.
+func _collect_behaviours() -> void:
+	behaviours.clear()
 	for child in get_children():
 		if child is SteeringBehaviour:
 			behaviours.append(child)
