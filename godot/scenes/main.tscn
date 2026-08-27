@@ -1,0 +1,107 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/ships/commander_ship.tscn" id="1_o6xl0"]
+[ext_resource type="Script" path="res://scripts/agents/ship.gd" id="2_tipki"]
+[ext_resource type="PackedScene" path="res://scenes/units/swarm_unit.tscn" id="3_85g3d"]
+[ext_resource type="Script" path="res://scripts/agents/swarm_unit.gd" id="4_choun"]
+[ext_resource type="Script" path="res://scripts/world/wireframe_hull.gd" id="5_ya4ey"]
+[ext_resource type="Script" path="res://scripts/steering/offset_pursue_behaviour.gd" id="6_eb6dy"]
+[ext_resource type="Script" path="res://scripts/control/follow_camera.gd" id="7_trceg"]
+
+[sub_resource type="Environment" id="Environment_a8y0u"]
+background_mode = 1
+background_color = Color(0.02, 0.02, 0.04, 1)
+glow_enabled = true
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_2n87u"]
+radius = 0.7
+
+[node name="Main" type="Node3D" unique_id=1766143466]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1244893336]
+environment = SubResource("Environment_a8y0u")
+
+[node name="CommanderShip" type="CharacterBody3D" parent="." unique_id=1016216681 instance=ExtResource("1_o6xl0")]
+motion_mode = 1
+script = ExtResource("2_tipki")
+
+[node name="Units" type="Node3D" parent="." unique_id=2056768456]
+
+[node name="SwarmUnit1" type="CharacterBody3D" parent="Units" unique_id=1696000468 instance=ExtResource("3_85g3d")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, -6)
+motion_mode = 1
+script = ExtResource("4_choun")
+
+[node name="Hull" type="MeshInstance3D" parent="Units/SwarmUnit1" unique_id=1600323256]
+script = ExtResource("5_ya4ey")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Units/SwarmUnit1" unique_id=923413146]
+shape = SubResource("SphereShape3D_2n87u")
+
+[node name="OffsetPursue" type="Node" parent="Units/SwarmUnit1" unique_id=89968610 node_paths=PackedStringArray("leader")]
+script = ExtResource("6_eb6dy")
+leader = NodePath("../../../CommanderShip")
+
+[node name="SwarmUnit2" type="CharacterBody3D" parent="Units" unique_id=1358975304 instance=ExtResource("3_85g3d")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0, -9)
+motion_mode = 1
+script = ExtResource("4_choun")
+
+[node name="Hull" type="MeshInstance3D" parent="Units/SwarmUnit2" unique_id=303531921]
+script = ExtResource("5_ya4ey")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Units/SwarmUnit2" unique_id=858358822]
+shape = SubResource("SphereShape3D_2n87u")
+
+[node name="OffsetPursue" type="Node" parent="Units/SwarmUnit2" unique_id=1101250002 node_paths=PackedStringArray("leader")]
+script = ExtResource("6_eb6dy")
+leader = NodePath("../../../CommanderShip")
+
+[node name="SwarmUnit3" type="CharacterBody3D" parent="Units" unique_id=2098661414 instance=ExtResource("3_85g3d")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -11)
+motion_mode = 1
+script = ExtResource("4_choun")
+
+[node name="Hull" type="MeshInstance3D" parent="Units/SwarmUnit3" unique_id=1352074643]
+script = ExtResource("5_ya4ey")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Units/SwarmUnit3" unique_id=1783147055]
+shape = SubResource("SphereShape3D_2n87u")
+
+[node name="OffsetPursue" type="Node" parent="Units/SwarmUnit3" unique_id=759684498 node_paths=PackedStringArray("leader")]
+script = ExtResource("6_eb6dy")
+leader = NodePath("../../../CommanderShip")
+
+[node name="SwarmUnit4" type="CharacterBody3D" parent="Units" unique_id=1279073500 instance=ExtResource("3_85g3d")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 0, -9)
+motion_mode = 1
+script = ExtResource("4_choun")
+
+[node name="Hull" type="MeshInstance3D" parent="Units/SwarmUnit4" unique_id=880589205]
+script = ExtResource("5_ya4ey")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Units/SwarmUnit4" unique_id=1826338764]
+shape = SubResource("SphereShape3D_2n87u")
+
+[node name="OffsetPursue" type="Node" parent="Units/SwarmUnit4" unique_id=885602406 node_paths=PackedStringArray("leader")]
+script = ExtResource("6_eb6dy")
+leader = NodePath("../../../CommanderShip")
+
+[node name="SwarmUnit5" type="CharacterBody3D" parent="Units" unique_id=911415092 instance=ExtResource("3_85g3d")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, -6)
+motion_mode = 1
+script = ExtResource("4_choun")
+
+[node name="Hull" type="MeshInstance3D" parent="Units/SwarmUnit5" unique_id=23009217]
+script = ExtResource("5_ya4ey")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Units/SwarmUnit5" unique_id=891368729]
+shape = SubResource("SphereShape3D_2n87u")
+
+[node name="OffsetPursue" type="Node" parent="Units/SwarmUnit5" unique_id=1217752682 node_paths=PackedStringArray("leader")]
+script = ExtResource("6_eb6dy")
+leader = NodePath("../../../CommanderShip")
+
+[node name="Camera3D" type="Camera3D" parent="." unique_id=506202740 node_paths=PackedStringArray("target")]
+script = ExtResource("7_trceg")
+target = NodePath("../CommanderShip")
