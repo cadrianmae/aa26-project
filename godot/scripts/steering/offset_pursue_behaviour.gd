@@ -43,6 +43,8 @@ func _capture_offset() -> void:
 	var world_offset: Vector3 = agent.global_position - leader.global_position
 	world_offset.y = 0.0
 	leader_offset = world_offset * leader.global_transform.basis
+	# Avoid a first-frame gizmo line to the world origin before calculate() runs.
+	projected = agent.global_position
 
 
 func calculate() -> Vector3:
