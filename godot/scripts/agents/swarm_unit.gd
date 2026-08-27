@@ -109,7 +109,8 @@ func _physics_process(delta: float) -> void:
 	# Low-pass filter the applied force so it chases the newly computed force
 	# rather than snapping to it. Removes jitter when a behaviour switches on
 	# or off. Duggan, behaviors/boid.gd:178.
-	force = force.lerp(new_force, delta)
+	# The 4.0 multiplier sets the smoothing time constant (matches ship.gd).
+	force = force.lerp(new_force, delta * 4.0)
 
 	var acceleration: Vector3 = force / mass
 	velocity += acceleration * delta
