@@ -5,28 +5,52 @@ Student: Mae Capacite, C21348423, TU856-4.
 This file records the third-party music, sound assets, and code technique
 this project draws on, and how each was obtained.
 
-## Music - launch theme
+## Music - phase themes
 
-- Work: "An der schonen blauen Donau" (The Blue Danube), Op. 314, by Johann
-  Strauss II, 1866. The composition itself is in the public domain, as
-  Strauss II died in 1899.
-- The arrangement used is the one heard in *Frontier: Elite II* (1993),
-  copyright David Braben / Frontier Developments.
-- The MIDI sequence was obtained from the Dream-Ware FE2-MIDI package,
+Seven tracks are assigned across the game's phases, one per phase, so the
+owner can audition them in the editor before the game logic that triggers
+each phase is written. All seven share the same source and rendering
+pipeline, described once below rather than per track.
+
+- LAUNCH: `blue_danube.ogg` - "An der schonen blauen Donau" (The Blue
+  Danube), Op. 314, by Johann Strauss II, 1866. Public domain; Strauss II
+  died in 1899.
+- FEAST: `jupiter.ogg` - "Jupiter, the Bringer of Jollity", from *The
+  Planets*, Op. 32, by Gustav Holst, 1914-1916. Public domain; Holst died
+  in 1934.
+- COMBAT: `ride_of_the_valkyries.ogg` - "Ride of the Valkyries", from *Die
+  Walkure*, by Richard Wagner, 1856. Public domain; Wagner died in 1883.
+- PATROL: `great_gate_of_kiev.ogg` - "The Great Gate of Kiev", from
+  *Pictures at an Exhibition*, by Modest Mussorgsky, 1874. Public domain;
+  Mussorgsky died in 1881.
+- FLEE: `baba_yagas_hut.ogg` - "The Hut on Fowl's Legs (Baba Yaga)", from
+  *Pictures at an Exhibition*, by Modest Mussorgsky, 1874. Public domain;
+  Mussorgsky died in 1881.
+- VICTORY: `hall_of_the_mountain_king.ogg` - "In the Hall of the Mountain
+  King", from *Peer Gynt*, Op. 23, by Edvard Grieg, 1875. Public domain;
+  Grieg died in 1907.
+- DEFEAT: `night_on_the_bare_mountain.ogg` - "Night on Bare Mountain", by
+  Modest Mussorgsky, 1867. Public domain; Mussorgsky died in 1881.
+
+For all seven:
+
+- The arrangements used are Frontier's: the ones heard in *Frontier: Elite
+  II* (1993), copyright David Braben / Frontier Developments.
+- The MIDI sequences were obtained from the Dream-Ware FE2-MIDI package,
   https://www.dream-ware.co.uk/frontier/music/ . That site states it uses
   assets and imagery from the Elite franchise with the permission of Frontier
   Developments plc, for non-commercial purposes. That permission is
   Dream-Ware's own and is not transferable to third parties. The page does
-  not name who produced the MIDI sequence itself, and states no redistribution
-  terms for the MIDI files it hosts.
+  not name who produced the MIDI sequences themselves, and states no
+  redistribution terms for the MIDI files it hosts.
 - Rendered to Ogg Vorbis with FluidSynth 2.5.4, using the FluidR3_GM
-  soundfont (see below).
+  soundfont (see below), at a render sample rate of 11.025 kHz.
 
-**This asset is a PLACEHOLDER.** Action item: replace it before submission
-with a public-domain or Creative Commons recording of the Blue Danube, for
-example from https://musopen.org , to avoid any copyright claim on the
-assessed YouTube video arising from the Dream-Ware arrangement's unclear
-redistribution terms.
+**This set is a PLACEHOLDER.** Action item: replace all seven before
+submission with public-domain or Creative Commons recordings of the same
+works, for example from https://musopen.org , to avoid any copyright claim
+on the assessed YouTube video arising from the Dream-Ware arrangements'
+unclear redistribution terms.
 
 ## Soundfont
 

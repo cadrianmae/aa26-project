@@ -4,7 +4,15 @@
 [ext_resource type="PackedScene" path="res://scenes/units/swarm_unit.tscn" id="3_85g3d"]
 [ext_resource type="Script" uid="uid://btxnggqj3n2nw" path="res://scripts/control/follow_camera.gd" id="7_trceg"]
 [ext_resource type="Script" path="res://scripts/audio/music_director.gd" id="8_musdir"]
-[ext_resource type="AudioStream" path="res://assets/audio/launch_theme.ogg" id="9_launch"]
+[ext_resource type="AudioStream" path="res://assets/audio/blue_danube.ogg" id="9_launch"]
+[ext_resource type="AudioStream" path="res://assets/audio/jupiter.ogg" id="10_feast"]
+[ext_resource type="AudioStream" path="res://assets/audio/ride_of_the_valkyries.ogg" id="11_combat"]
+[ext_resource type="AudioStream" path="res://assets/audio/great_gate_of_kiev.ogg" id="12_patrol"]
+[ext_resource type="AudioStream" path="res://assets/audio/baba_yagas_hut.ogg" id="13_flee"]
+[ext_resource type="AudioStream" path="res://assets/audio/hall_of_the_mountain_king.ogg" id="14_victory"]
+[ext_resource type="AudioStream" path="res://assets/audio/night_on_the_bare_mountain.ogg" id="15_defeat"]
+[ext_resource type="Script" path="res://scripts/world/starfield.gd" id="16_starfield"]
+[ext_resource type="Script" path="res://scripts/world/speed_dust.gd" id="17_speeddust"]
 
 [sub_resource type="Environment" id="Environment_a8y0u"]
 background_mode = 1
@@ -42,3 +50,21 @@ target = NodePath("../CommanderShip")
 [node name="MusicDirector" type="AudioStreamPlayer" parent="."]
 script = ExtResource("8_musdir")
 launch_theme = ExtResource("9_launch")
+feast_theme = ExtResource("10_feast")
+combat_theme = ExtResource("11_combat")
+patrol_theme = ExtResource("12_patrol")
+flee_theme = ExtResource("13_flee")
+victory_theme = ExtResource("14_victory")
+defeat_theme = ExtResource("15_defeat")
+
+[node name="Starfield" type="MeshInstance3D" parent="." node_paths=PackedStringArray("camera")]
+script = ExtResource("16_starfield")
+camera = NodePath("../Camera3D")
+
+[node name="SpeedDust" type="Node3D" parent="." node_paths=PackedStringArray("ship")]
+script = ExtResource("17_speeddust")
+ship = NodePath("../CommanderShip")
+
+[node name="NearDust" type="GPUParticles3D" parent="SpeedDust"]
+
+[node name="FarDust" type="GPUParticles3D" parent="SpeedDust"]

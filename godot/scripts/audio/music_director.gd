@@ -7,11 +7,15 @@
 ## stopping the others, and that discipline always eventually lapses,
 ## producing overlapping music. Centralising the swap here removes the chance
 ## of that bug rather than relying on every caller to avoid it.
+##
+## PATROL, FLEE, VICTORY, and DEFEAT exist ahead of the game logic that will
+## trigger them, so all seven placeholder tracks have a phase to audition
+## through in the editor before that logic is written.
 class_name MusicDirector
 extends AudioStreamPlayer
 
 ## The phases the game can be in. More will be added as the game grows.
-enum Phase { LAUNCH, FEAST, COMBAT }
+enum Phase { LAUNCH, FEAST, COMBAT, PATROL, FLEE, VICTORY, DEFEAT }
 
 ## Track for the launch phase.
 @export var launch_theme: AudioStream
@@ -21,6 +25,18 @@ enum Phase { LAUNCH, FEAST, COMBAT }
 
 ## Track for the combat phase. Left unassigned until that phase exists.
 @export var combat_theme: AudioStream
+
+## Track for the patrol phase. Left unassigned until that phase exists.
+@export var patrol_theme: AudioStream
+
+## Track for the flee phase. Left unassigned until that phase exists.
+@export var flee_theme: AudioStream
+
+## Track for the victory phase. Left unassigned until that phase exists.
+@export var victory_theme: AudioStream
+
+## Track for the defeat phase. Left unassigned until that phase exists.
+@export var defeat_theme: AudioStream
 
 ## How long a cross-fade between tracks takes, in seconds.
 @export var fade_seconds: float = 1.5
@@ -79,6 +95,14 @@ func _stream_for_phase(phase: Phase) -> AudioStream:
 			return feast_theme
 		Phase.COMBAT:
 			return combat_theme
+		Phase.PATROL:
+			return patrol_theme
+		Phase.FLEE:
+			return flee_theme
+		Phase.VICTORY:
+			return victory_theme
+		Phase.DEFEAT:
+			return defeat_theme
 	return null
 
 
