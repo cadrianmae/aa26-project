@@ -43,7 +43,7 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	if draw_gizmos and enabled:
+	if draw_gizmos and enabled and agent != null:
 		on_draw_gizmos()
 
 
@@ -68,18 +68,18 @@ func seek_towards(destination: Vector3) -> Vector3:
 	return desired - agent.velocity
 
 
-## Steer towards [param destination], braking inside [param slowing_distance].
+## Steer towards [param destination], braking inside [param slowing_radius].
 ##
 ## The [code]dist < 2.0[/code] dead zone is a numerical-stability guard: the
 ## line below it divides by [code]dist[/code], which blows up at the target and
 ## makes the agent jitter or emit NaN. It also gives a clean stop condition.
 ## Adapted from Duggan, behaviors/boid.gd:106-116.
-func arrive_towards(destination: Vector3, slowing_distance: float) -> Vector3:
+func arrive_towards(destination: Vector3, slowing_radius: float) -> Vector3:
 	var to_target: Vector3 = destination - agent.global_position
 	var dist: float = to_target.length()
 	if dist < 2.0:
 		return Vector3.ZERO
-	var ramped: float = (dist / slowing_distance) * agent.max_speed
+	var ramped: float = (dist / slowing_radius) * agent.max_speed
 	var clamped: float = minf(agent.max_speed, ramped)
 	var desired: Vector3 = (to_target * clamped) / dist
 	return desired - agent.velocity
