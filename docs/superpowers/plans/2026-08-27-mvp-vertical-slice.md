@@ -14,7 +14,12 @@
 
 - **Engine:** Godot 4.6 feature level, run under 4.7.1. Binary is `godot`; the `godot-dev` wrapper resolves it.
 - **File and folder names:** `snake_case`. **Node names in scenes:** `PascalCase`.
-- **GDScript member order:** `class_name`, `extends`, doc comment, signals, enums, constants, `@export`, vars, `@onready`, then `_init` / `_ready` / virtuals / public / private.
+- **GDScript member order:** doc comment, `class_name`, `extends`, signals, enums,
+  constants, `@export`, vars, `@onready`, then `_init` / `_ready` / virtuals /
+  public / private. Note the doc comment goes at the very top of the file, above
+  `class_name` — Godot only attaches a `##` block to the class documentation when
+  it sits directly above `class_name`. The official style guide lists it after
+  `extends`, which does not actually produce class docs.
 - **Indentation:** tabs. **Line length:** under 100 characters. **Quotes:** double.
 - **Forward axis is +Z**, following Duggan: orient with `look_at(global_position - velocity, up)`. A formation slot behind the leader needs a **negative** Z offset.
 - **Movement plane:** XZ. Y is held constant for all agents in the MVP.
