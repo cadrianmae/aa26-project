@@ -78,7 +78,10 @@ func _physics_process(delta: float) -> void:
 
 	if draw_gizmos:
 		DebugDraw3D.draw_arrow(
-			global_position, global_position + force, Color.RED, 0.15
+			global_position, global_position + force, Color.YELLOW, 0.1
+		)
+		DebugDraw3D.draw_arrow(
+			global_position, global_position + velocity, Color.CORNFLOWER_BLUE, 0.1
 		)
 
 
