@@ -16,6 +16,9 @@ extends SteeringBehaviour
 ## Turning force applied along the agent's right axis.
 @export var turn_force: float = 20.0
 
+## The thrust force computed last [method calculate], kept for the gizmo.
+var last_force: Vector3 = Vector3.ZERO
+
 
 func calculate() -> Vector3:
 	# basis.x flattened onto XZ. When the hull is banked into a turn its local
@@ -32,4 +35,11 @@ func calculate() -> Vector3:
 	force += move * agent.global_transform.basis.z * thrust
 	force += turn * projected_right * turn_force
 	force.y = 0.0
+	last_force = force
 	return force
+
+
+func on_draw_gizmos() -> void:
+	DebugDraw3D.draw_arrow(
+		agent.global_position, agent.global_position + last_force, Color.GREEN, 0.1
+	)
