@@ -1,5 +1,4 @@
-// Procedural three-layer parallax starfield, plus a camera-speed streak layer
-// for motion dust (see the streak uniforms and star_layer's stretch below).
+// Procedural three-layer parallax starfield.
 //
 // Drawn on a large quad parented to the camera (see starfield.gd), positioned
 // just inside the camera's far plane so it always fills the view and moves
@@ -25,6 +24,18 @@
 // every star would land sub-pixel, reading as fine static instead of stars.
 // SCREEN_UV is always 0..1 regardless of the quad's world size, so "density"
 // below means exactly what it says: cells across the screen.
+//
+// Star brightness within a layer follows a power-law distribution (see
+// brightness_power below) rather than a flat per-layer value: real starfields
+// are overwhelmingly faint, small, point-like stars with only a rare few
+// bright enough to cover a handful of pixels. Raising the cell hash to a high
+// power pushes most cells toward zero brightness while leaving a small tail
+// near 1.0, and star size is driven by that same value so the rare bright
+// stars are also the only ones large enough to read as a small disc; the
+// common faint stars stay pinned near a hard, one-to-two pixel point. The
+// falloff itself is a tight smoothstep with almost no soft edge, which is
+// what keeps a faint star a crisp dot instead of the wide fuzzy bokeh blobs
+// this replaces.
 shader_type spatial;
 render_mode unshaded, depth_draw_never, cull_disabled;
 
@@ -53,45 +64,33 @@ uniform float far_density : hint_range(1.0, 200.0) = 20.0;
 uniform float mid_density : hint_range(1.0, 200.0) = 14.0;
 uniform float near_density : hint_range(1.0, 200.0) = 8.0;
 
-// Per-layer brightness ceiling. The nearest layer is deliberately brightest
-// so the depth ordering reads clearly.
+// Per-layer brightness ceiling, applied on top of the per-star power-law
+// value below. The nearest layer is deliberately brightest so the depth
+// ordering reads clearly.
 uniform float far_brightness : hint_range(0.0, 1.0) = 0.35;
 uniform float mid_brightness : hint_range(0.0, 1.0) = 0.6;
 uniform float near_brightness : hint_range(0.0, 1.0) = 0.9;
 
-// Star point size per layer, as a fraction of that layer's own cell (so it
-// scales with the density uniforms above rather than the screen). The
-// nearest layer is deliberately largest, and its low density plus large size
-// combine to give clearly visible discs; the far layer's small size against
-// its high density gives a faint dusting.
-uniform float far_size : hint_range(0.0, 0.5) = 0.12;
-uniform float mid_size : hint_range(0.0, 0.5) = 0.18;
-uniform float near_size : hint_range(0.0, 0.5) = 0.28;
+// Maximum star point size per layer, as a fraction of that layer's own cell
+// (so it scales with the density uniforms above rather than the screen). A
+// star's actual size is this ceiling scaled down by its own power-law
+// brightness (see star_layer), so only the rare bright cells reach it; most
+// stars render far smaller. The nearest layer's ceiling is deliberately
+// largest, matching its lower density, but even at maximum this is a handful
+// of pixels, not the large soft discs the previous flat sizing produced.
+uniform float far_size : hint_range(0.0, 0.1) = 0.02;
+uniform float mid_size : hint_range(0.0, 0.1) = 0.03;
+uniform float near_size : hint_range(0.0, 0.1) = 0.045;
 
-// Motion-dust streak layer. Screen-locked (not offset by camera_world_position
-// like the parallax layers above) so it reads as debris rushing past close to
-// the camera rather than distant stars. camera_velocity_local and
-// camera_speed are fed in from starfield.gd each frame: the camera's
-// frame-to-frame world displacement projected onto the camera's own local
-// right/up axes, so a streak's on-screen direction always matches the
-// camera's actual on-screen motion regardless of which way it is facing.
-uniform vec2 camera_velocity_local = vec2(0.0);
-uniform float camera_speed = 0.0;
-
-// Tunables so the owner can adjust the streak effect without touching code.
-// max_streak_length is a fraction of one dust cell (see star_streak), so its
-// on-screen length also scales with dust_density below -- both were retuned
-// together for the screen-space cell scale.
-uniform float streak_intensity : hint_range(0.0, 3.0) = 1.0;
-uniform float max_streak_length : hint_range(0.0, 2.0) = 1.5;
-uniform float streak_full_speed : hint_range(0.1, 100.0) = 20.0;
-
-// Dust point cells per screen and their size/brightness, analogous to the
-// star layer uniforms above but for the streak layer. Denser than the star
-// layers so it reads as fine debris rather than another star field.
-uniform float dust_density : hint_range(1.0, 400.0) = 50.0;
-uniform float dust_size : hint_range(0.0, 0.2) = 0.15;
-uniform float dust_brightness : hint_range(0.0, 1.0) = 0.85;
+// Exponent applied to each star's cell hash to derive its brightness
+// (pow(hash, brightness_power)). Higher values make bright stars rarer: the
+// fraction of stars with brightness above 0.5 is 1 - 0.5^(1/brightness_power).
+// At the default of 8.0 that fraction is about 8%, i.e. roughly one star in
+// twelve is above half brightness, and the vast majority sit near-zero and
+// render as barely-visible one-pixel points. This is the core of the
+// power-law distribution: exposed as a uniform so it can be retuned without
+// touching the shader.
+uniform float brightness_power : hint_range(1.0, 16.0) = 8.0;
 
 // Cheap deterministic hash, no texture lookups, so there is no asset to
 // ship. Returns a pseudo-random value in [0, 1) for a 2D cell coordinate.
@@ -102,7 +101,7 @@ float star_hash(vec2 cell) {
 // Renders one parallax star layer at the given screen-space UV (0..1, before
 // the density scale below). Returns the star's brightness contribution at
 // this fragment, 0 if no star is near.
-float star_layer(vec2 uv, float density, float point_size, float brightness) {
+float star_layer(vec2 uv, float density, float max_point_size, float brightness) {
 	vec2 cell_uv = uv * density;
 	vec2 cell = floor(cell_uv);
 	vec2 local = fract(cell_uv) - 0.5;
@@ -115,61 +114,30 @@ float star_layer(vec2 uv, float density, float point_size, float brightness) {
 	}
 
 	// Jitter the star off the cell centre so the grid does not read as a
-	// grid, and vary its size and twinkle brightness per cell.
+	// grid.
 	vec2 jitter = vec2(star_hash(cell + 4.7), star_hash(cell + 9.3)) - 0.5;
 	vec2 offset = local - jitter * 0.6;
-	float size_variation = 0.5 + star_hash(cell + 1.3);
+
+	// Power-law brightness: raising the hash to a high power concentrates
+	// most cells near 0 (faint) with only a rare few near 1 (bright). Point
+	// size is driven by the same value, so bright stars are also the large
+	// ones; faint stars shrink toward a single hard pixel rather than
+	// staying a flat size, which is what breaks up the previous uniform
+	// bokeh-blob look.
+	float star_power = pow(star_hash(cell + 1.3), brightness_power);
+	float point_size = max_point_size * max(star_power, 0.12);
 	float dist = length(offset);
-	// A narrow smoothstep edge plus a power curve gives a hard, small, round
-	// core instead of the wide soft falloff that reads as fuzzy grain when
-	// stars are packed densely -- exactly the "noise" look this is avoiding.
-	float edge = point_size * size_variation * 0.6;
-	float star = 1.0 - smoothstep(0.0, edge, dist);
-	star = pow(star, 1.5);
+
+	// A tight smoothstep gives a hard, small, crisp edge -- just enough
+	// softness across a fraction of a pixel's worth of UV to avoid aliasing,
+	// nothing like the wide soft falloff that reads as fuzzy grain when
+	// stars are packed densely.
+	float edge = point_size * 0.35;
+	float core = point_size - edge;
+	float star = 1.0 - smoothstep(core, point_size, dist);
 
 	float twinkle = 0.6 + 0.4 * star_hash(cell + 17.0);
-	return star * brightness * twinkle;
-}
-
-// Renders one streak of the motion-dust layer at the given screen-locked UV.
-// Identical cell/hash setup to star_layer, but the point is elongated into a
-// capsule along [param streak_dir] by [param streak_length]: distance is
-// measured to the nearest point of a line segment of that length through the
-// cell centre, rather than to the centre itself, so the streak has a round
-// leading edge and a length that grows with camera speed.
-float star_streak(
-	vec2 uv, float density, float point_size, float brightness,
-	vec2 streak_dir, float streak_length
-) {
-	vec2 cell_uv = uv * density;
-	vec2 cell = floor(cell_uv);
-	vec2 local = fract(cell_uv) - 0.5;
-
-	float star_present = star_hash(cell);
-	if (star_present < 0.55) {
-		return 0.0;
-	}
-
-	vec2 jitter = vec2(star_hash(cell + 4.7), star_hash(cell + 9.3)) - 0.5;
-	vec2 offset = local - jitter * 0.6;
-	float size_variation = 0.5 + star_hash(cell + 1.3);
-
-	// Rotate the offset into (along, perpendicular) axes relative to the
-	// streak direction, then flatten the along-axis distance to zero across
-	// the streak's length -- a cheap capsule signed distance.
-	vec2 perp_dir = vec2(-streak_dir.y, streak_dir.x);
-	float along = dot(offset, streak_dir);
-	float perp = dot(offset, perp_dir);
-	float half_length = streak_length * 0.5;
-	float along_dist = max(abs(along) - half_length, 0.0);
-	float dist = length(vec2(along_dist, perp));
-
-	float edge = point_size * size_variation * 0.6;
-	float star = 1.0 - smoothstep(0.0, edge, dist);
-	star = pow(star, 1.5);
-
-	float twinkle = 0.6 + 0.4 * star_hash(cell + 17.0);
-	return star * brightness * twinkle;
+	return star * brightness * star_power * twinkle;
 }
 
 void fragment() {
@@ -184,37 +152,19 @@ void fragment() {
 	// Each layer samples "star space" offset by a different fraction of the
 	// camera's world position -- that difference in scroll rate is the
 	// parallax. Distant layers barely shift; the near layer shifts a lot.
-	vec2 far_uv = screen_uv + camera_world_position.xz * far_parallax;
-	vec2 mid_uv = screen_uv + camera_world_position.xz * mid_parallax;
-	vec2 near_uv = screen_uv + camera_world_position.xz * near_parallax;
+	// Subtracting (not adding) is deliberate: a star fixed in world space
+	// must appear to slide toward the screen edge the camera is moving away
+	// from as the camera travels, the same way roadside objects slide past
+	// and behind you as you drive forward. Adding here made the sampled
+	// pattern shift the same way as camera travel, which reads as stars
+	// rushing off in the direction of travel instead of streaming past.
+	vec2 far_uv = screen_uv - camera_world_position.xz * far_parallax;
+	vec2 mid_uv = screen_uv - camera_world_position.xz * mid_parallax;
+	vec2 near_uv = screen_uv - camera_world_position.xz * near_parallax;
 
 	float far_star = star_layer(far_uv, far_density, far_size, far_brightness);
 	float mid_star = star_layer(mid_uv, mid_density, mid_size, mid_brightness);
 	float near_star = star_layer(near_uv, near_density, near_size, near_brightness);
-
-	// Motion dust: only present while the camera is actually moving, and its
-	// streak length grows from nothing up to max_streak_length as camera_speed
-	// approaches streak_full_speed. Gating on speed_fraction (rather than just
-	// letting streak_length shrink to a dot) is what satisfies "only appears
-	// when the camera is moving" -- a zero-length streak would otherwise still
-	// render as a static dust field.
-	float speed_fraction = clamp(camera_speed / max(streak_full_speed, 0.001), 0.0, 1.0);
-	float streak_length = speed_fraction * max_streak_length * streak_intensity;
-	float dust_star = 0.0;
-	if (speed_fraction > 0.01) {
-		vec2 streak_dir = vec2(1.0, 0.0);
-		float dir_length = length(camera_velocity_local);
-		if (dir_length > 0.0001) {
-			streak_dir = camera_velocity_local / dir_length;
-		}
-		// screen_uv (not parallax-shifted) keeps the dust locked to the screen
-		// so it fills the whole view uniformly rather than clustering near
-		// where the ship happens to be, satisfying "everywhere on screen".
-		dust_star = star_streak(
-			screen_uv, dust_density, dust_size, dust_brightness * speed_fraction,
-			streak_dir, streak_length
-		);
-	}
 
 	// Base near-black background matching the world environment, so the quad
 	// blends seamlessly with WorldEnvironment's background_color.
@@ -225,13 +175,11 @@ void fragment() {
 	vec3 far_colour = vec3(0.75, 0.8, 0.95);
 	vec3 mid_colour = vec3(0.85, 0.9, 1.0);
 	vec3 near_colour = vec3(1.0, 1.0, 1.0);
-	vec3 dust_colour = vec3(0.9, 0.95, 1.0);
 
 	vec3 colour = background;
 	colour += far_colour * far_star;
 	colour += mid_colour * mid_star;
 	colour += near_colour * near_star;
-	colour += dust_colour * dust_star;
 
 	ALBEDO = colour;
 	ALPHA = 1.0;
