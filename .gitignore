@@ -1,0 +1,16 @@
+# Godot 4 .gitignore
+# Godot-generated import cache and derived files
+godot/.godot/
+godot/*.translation
+
+# Mono/C# (unused here, kept for safety)
+godot/.mono/
+godot/data_*/
+
+# System
+.DS_Store
+*~
+
+# Godot export artefacts
+godot/build/
+godot/export_presets.cfg
