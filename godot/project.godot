@@ -15,10 +15,6 @@ config/description="CMPU 4031 Autonomous Agents artifact. Mae Capacite C21348423
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
 
-[editor_plugins]
-
-enabled=PackedStringArray("res://addons/debug_draw_3d/plugin.cfg")
-
 [input]
 
 move_forward={
@@ -55,3 +51,4 @@ fire={
 
 renderer/rendering_method="forward_plus"
 environment/defaults/default_clear_color=Color(0.02, 0.02, 0.04, 1)
+rendering_device/driver.windows="d3d12"
