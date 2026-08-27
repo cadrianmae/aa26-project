@@ -27,4 +27,12 @@ func _physics_process(delta: float) -> void:
 		return
 	var desired: Vector3 = target.global_position + Vector3(0.0, height, distance)
 	global_position = global_position.lerp(desired, delta * smoothing)
-	look_at(target.global_position, Vector3.UP)
+	var to_target: Vector3 = target.global_position - global_position
+	if to_target.length() == 0.0:
+		return
+	# Vector3.UP fails as the up-hint when the camera looks straight down, so
+	# fall back to a horizontal up-vector for a true overhead view.
+	var up_hint: Vector3 = Vector3.UP
+	if absf(to_target.normalized().dot(Vector3.UP)) > 0.999:
+		up_hint = Vector3.FORWARD
+	look_at(target.global_position, up_hint)
