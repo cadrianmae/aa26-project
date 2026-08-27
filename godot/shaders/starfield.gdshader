@@ -18,7 +18,13 @@
 // view direction only, which makes per-layer parallax against camera
 // world-space movement awkward; a plain quad lets the script hand the shader
 // the camera's world position directly and the shader does cheap 2D hashing
-// in local quad space, no texture asset required.
+// in screen space (SCREEN_UV), no texture asset required. Screen space is
+// deliberate: the quad's own size is derived from the camera's fov and far
+// plane and comes out thousands of units across, so hashing in quad-local
+// units would put tens of thousands of star cells across the screen and
+// every star would land sub-pixel, reading as fine static instead of stars.
+// SCREEN_UV is always 0..1 regardless of the quad's world size, so "density"
+// below means exactly what it says: cells across the screen.
 shader_type spatial;
 render_mode unshaded, depth_draw_never, cull_disabled;
 
@@ -27,19 +33,25 @@ render_mode unshaded, depth_draw_never, cull_disabled;
 // difference in scroll rate is what produces the parallax.
 uniform vec3 camera_world_position = vec3(0.0);
 
-// How strongly each layer scrolls against camera movement. Near 0 reads as
-// almost fixed to the screen (very distant); higher values track the camera
-// more closely (nearer).
-uniform float far_parallax : hint_range(0.0, 1.0) = 0.02;
-uniform float mid_parallax : hint_range(0.0, 1.0) = 0.08;
-uniform float near_parallax : hint_range(0.0, 1.0) = 0.2;
+// How strongly each layer scrolls against camera movement, applied directly
+// to camera_world_position (in world units) to offset a 0..1 SCREEN_UV
+// coordinate -- so these are small fractions, not the 0..1 "almost to
+// entirely camera-locked" fractions they would be against a local-space UV.
+// Tuned against the ship's own scale (max_speed is ~18 units/second, see
+// ship.gd): flying for a few seconds covers on the order of tens to a couple
+// of hundred world units, and at these factors that visibly scrolls the near
+// layer by a large fraction of the screen while the far layer barely moves.
+uniform float far_parallax : hint_range(0.0, 0.02) = 0.0002;
+uniform float mid_parallax : hint_range(0.0, 0.02) = 0.0012;
+uniform float near_parallax : hint_range(0.0, 0.02) = 0.004;
 
-// Star cells per layer, controlling apparent density. Higher is denser.
-// Kept low and the point sizes below correspondingly larger so stars read as
-// distinct points of light rather than dense, fine-grained noise.
-uniform float far_density : hint_range(1.0, 200.0) = 12.0;
-uniform float mid_density : hint_range(1.0, 200.0) = 8.0;
-uniform float near_density : hint_range(1.0, 200.0) = 5.0;
+// Star cells per layer, in cells across the screen HEIGHT (SCREEN_UV's y
+// axis runs 0..1; x is aspect-corrected so cells are square). Higher is
+// denser. Tuned so the far layer is a faint dusting and the near layer reads
+// as distinct, larger points of light -- see the point sizes below.
+uniform float far_density : hint_range(1.0, 200.0) = 20.0;
+uniform float mid_density : hint_range(1.0, 200.0) = 14.0;
+uniform float near_density : hint_range(1.0, 200.0) = 8.0;
 
 // Per-layer brightness ceiling. The nearest layer is deliberately brightest
 // so the depth ordering reads clearly.
@@ -47,12 +59,14 @@ uniform float far_brightness : hint_range(0.0, 1.0) = 0.35;
 uniform float mid_brightness : hint_range(0.0, 1.0) = 0.6;
 uniform float near_brightness : hint_range(0.0, 1.0) = 0.9;
 
-// Star point size per layer, in the layer's own hashed cell-space. The
-// nearest layer is deliberately largest so the depth ordering reads clearly.
-// Sized up to match the lower densities above -- fewer, larger stars.
-uniform float far_size : hint_range(0.0, 0.5) = 0.1;
-uniform float mid_size : hint_range(0.0, 0.5) = 0.16;
-uniform float near_size : hint_range(0.0, 0.5) = 0.24;
+// Star point size per layer, as a fraction of that layer's own cell (so it
+// scales with the density uniforms above rather than the screen). The
+// nearest layer is deliberately largest, and its low density plus large size
+// combine to give clearly visible discs; the far layer's small size against
+// its high density gives a faint dusting.
+uniform float far_size : hint_range(0.0, 0.5) = 0.12;
+uniform float mid_size : hint_range(0.0, 0.5) = 0.18;
+uniform float near_size : hint_range(0.0, 0.5) = 0.28;
 
 // Motion-dust streak layer. Screen-locked (not offset by camera_world_position
 // like the parallax layers above) so it reads as debris rushing past close to
@@ -65,23 +79,19 @@ uniform vec2 camera_velocity_local = vec2(0.0);
 uniform float camera_speed = 0.0;
 
 // Tunables so the owner can adjust the streak effect without touching code.
+// max_streak_length is a fraction of one dust cell (see star_streak), so its
+// on-screen length also scales with dust_density below -- both were retuned
+// together for the screen-space cell scale.
 uniform float streak_intensity : hint_range(0.0, 3.0) = 1.0;
-uniform float max_streak_length : hint_range(0.0, 2.0) = 0.35;
+uniform float max_streak_length : hint_range(0.0, 2.0) = 1.5;
 uniform float streak_full_speed : hint_range(0.1, 100.0) = 20.0;
 
 // Dust point cells per screen and their size/brightness, analogous to the
-// star layer uniforms above but for the streak layer.
-uniform float dust_density : hint_range(1.0, 400.0) = 90.0;
-uniform float dust_size : hint_range(0.0, 0.2) = 0.03;
+// star layer uniforms above but for the streak layer. Denser than the star
+// layers so it reads as fine debris rather than another star field.
+uniform float dust_density : hint_range(1.0, 400.0) = 50.0;
+uniform float dust_size : hint_range(0.0, 0.2) = 0.15;
 uniform float dust_brightness : hint_range(0.0, 1.0) = 0.85;
-
-varying vec2 local_uv;
-
-void vertex() {
-	// The quad's own local XY, before the camera-relative transform. This is
-	// the "screen space" the star layers are hashed in.
-	local_uv = VERTEX.xy;
-}
 
 // Cheap deterministic hash, no texture lookups, so there is no asset to
 // ship. Returns a pseudo-random value in [0, 1) for a 2D cell coordinate.
@@ -89,8 +99,9 @@ float star_hash(vec2 cell) {
 	return fract(sin(dot(cell, vec2(127.1, 311.7))) * 43758.5453123);
 }
 
-// Renders one parallax star layer at the given cell-space UV. Returns the
-// star's brightness contribution at this fragment, 0 if no star is near.
+// Renders one parallax star layer at the given screen-space UV (0..1, before
+// the density scale below). Returns the star's brightness contribution at
+// this fragment, 0 if no star is near.
 float star_layer(vec2 uv, float density, float point_size, float brightness) {
 	vec2 cell_uv = uv * density;
 	vec2 cell = floor(cell_uv);
@@ -162,12 +173,20 @@ float star_streak(
 }
 
 void fragment() {
+	// SCREEN_UV is 0..1 across the viewport regardless of the quad's world
+	// size, far plane distance, or window resolution -- that independence is
+	// the fix: density below means "cells across the screen" and nothing
+	// else. Correct x by the viewport aspect so star cells are square rather
+	// than stretched to the window's shape.
+	float aspect = VIEWPORT_SIZE.x / max(VIEWPORT_SIZE.y, 1.0);
+	vec2 screen_uv = vec2(SCREEN_UV.x * aspect, SCREEN_UV.y);
+
 	// Each layer samples "star space" offset by a different fraction of the
 	// camera's world position -- that difference in scroll rate is the
 	// parallax. Distant layers barely shift; the near layer shifts a lot.
-	vec2 far_uv = local_uv + camera_world_position.xz * far_parallax * 0.05;
-	vec2 mid_uv = local_uv + camera_world_position.xz * mid_parallax * 0.05;
-	vec2 near_uv = local_uv + camera_world_position.xz * near_parallax * 0.05;
+	vec2 far_uv = screen_uv + camera_world_position.xz * far_parallax;
+	vec2 mid_uv = screen_uv + camera_world_position.xz * mid_parallax;
+	vec2 near_uv = screen_uv + camera_world_position.xz * near_parallax;
 
 	float far_star = star_layer(far_uv, far_density, far_size, far_brightness);
 	float mid_star = star_layer(mid_uv, mid_density, mid_size, mid_brightness);
@@ -188,11 +207,11 @@ void fragment() {
 		if (dir_length > 0.0001) {
 			streak_dir = camera_velocity_local / dir_length;
 		}
-		// local_uv (not parallax-shifted) keeps the dust locked to the screen
+		// screen_uv (not parallax-shifted) keeps the dust locked to the screen
 		// so it fills the whole view uniformly rather than clustering near
 		// where the ship happens to be, satisfying "everywhere on screen".
 		dust_star = star_streak(
-			local_uv, dust_density, dust_size, dust_brightness * speed_fraction,
+			screen_uv, dust_density, dust_size, dust_brightness * speed_fraction,
 			streak_dir, streak_length
 		);
 	}
