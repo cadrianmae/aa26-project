@@ -96,8 +96,24 @@ func _collect_behaviours() -> void:
 ##      `limit_length(max_force)` and break.
 ##   7. Return the accumulator.
 func calculate_force() -> Vector3:
-	# TODO(human): implement WTPRS per the steps above.
-	return Vector3.ZERO
+	var total_force: Vector3 = Vector3.ZERO
+	var weighted_force: Vector3 = Vector3.ZERO
+
+	for behaviour in behaviours:
+		if not behaviour.enabled:
+			continue
+
+		weighted_force = behaviour.calculate() * behaviour.weight
+
+		if not weighted_force.is_finite():
+			weighted_force = Vector3.ZERO
+
+		total_force += weighted_force
+		if total_force.length() > max_force:
+			total_force = total_force.limit_length(max_force)
+			break
+
+	return total_force
 
 
 # --- Integration (fixed-timestep plumbing) --------------------------------
