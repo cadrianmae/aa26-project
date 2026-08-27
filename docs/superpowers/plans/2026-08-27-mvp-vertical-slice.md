@@ -21,6 +21,10 @@
   it sits directly above `class_name`. The official style guide lists it after
   `extends`, which does not actually produce class docs.
 - **Indentation:** tabs. **Line length:** under 100 characters. **Quotes:** double.
+- **Type annotations:** explicit `var x: Vector3 = ...` is preferred over `:=` on
+  steering-maths locals, matching the style already used in `aa-26-refactored`.
+  Consistency with the existing codebase beats the style guide's `:=` preference,
+  and spelling out Vector3 against float makes the formulas readable.
 - **Forward axis is +Z**, following Duggan: orient with `look_at(global_position - velocity, up)`. A formation slot behind the leader needs a **negative** Z offset.
 - **Movement plane:** XZ. Y is held constant for all agents in the MVP.
 - **Attribution:** every file adapted from Duggan carries a comment naming the source file and line range.
