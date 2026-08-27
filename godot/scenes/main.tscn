@@ -12,11 +12,10 @@
 [ext_resource type="AudioStream" path="res://assets/audio/hall_of_the_mountain_king.ogg" id="14_victory"]
 [ext_resource type="AudioStream" path="res://assets/audio/night_on_the_bare_mountain.ogg" id="15_defeat"]
 [ext_resource type="Script" path="res://scripts/world/starfield.gd" id="16_starfield"]
-[ext_resource type="Script" path="res://scripts/world/speed_dust.gd" id="17_speeddust"]
 
 [sub_resource type="Environment" id="Environment_a8y0u"]
 background_mode = 1
-background_color = Color(0.02, 0.02, 0.04, 1)
+background_color = Color(0.005, 0.005, 0.012, 1)
 glow_enabled = true
 
 [node name="Main" type="Node3D" unique_id=1894958291]
@@ -60,11 +59,3 @@ defeat_theme = ExtResource("15_defeat")
 [node name="Starfield" type="MeshInstance3D" parent="." node_paths=PackedStringArray("camera")]
 script = ExtResource("16_starfield")
 camera = NodePath("../Camera3D")
-
-[node name="SpeedDust" type="Node3D" parent="." node_paths=PackedStringArray("ship")]
-script = ExtResource("17_speeddust")
-ship = NodePath("../CommanderShip")
-
-[node name="NearDust" type="GPUParticles3D" parent="SpeedDust"]
-
-[node name="FarDust" type="GPUParticles3D" parent="SpeedDust"]
