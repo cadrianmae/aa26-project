@@ -151,3 +151,7 @@ func _follow_camera(delta: float) -> void:
 		direction_screen = velocity_screen.normalized()
 	_material.set_shader_parameter("stretch_direction", direction_screen)
 	_material.set_shader_parameter("stretch_amount", speed_fraction * max_stretch)
+	# Distance-fade uniforms (dust_particle.gdshader) need the camera's world
+	# position every frame to fade particles near the emission box's edge and
+	# right at the lens; see the shader's own comments for why.
+	_material.set_shader_parameter("camera_position", camera.global_position)
