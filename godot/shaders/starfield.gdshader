@@ -44,6 +44,11 @@ render_mode unshaded, depth_draw_never, cull_disabled;
 // difference in scroll rate is what produces the parallax.
 uniform vec3 camera_world_position = vec3(0.0);
 
+// Colour of empty space. The quad is opaque and fills the screen, so this
+// overrides both WorldEnvironment's background_color and the project's
+// default_clear_color -- neither of those is ever visible behind it.
+uniform vec3 background_colour : source_color = vec3(0.0, 0.0, 0.0);
+
 // How strongly each layer scrolls against camera movement, applied directly
 // to camera_world_position (in world units) to offset a 0..1 SCREEN_UV
 // coordinate -- so these are small fractions, not the 0..1 "almost to
@@ -166,9 +171,12 @@ void fragment() {
 	float mid_star = star_layer(mid_uv, mid_density, mid_size, mid_brightness);
 	float near_star = star_layer(near_uv, near_density, near_size, near_brightness);
 
-	// Base near-black background matching the world environment, so the quad
-	// blends seamlessly with WorldEnvironment's background_color.
-	vec3 background = vec3(0.005, 0.005, 0.012);
+	// The quad is opaque and covers the whole screen, so this colour REPLACES
+	// the WorldEnvironment background and the project's clear colour rather
+	// than blending with them. It is therefore the one that actually decides
+	// what empty space looks like -- keep it matched to the environment, or
+	// set both to black.
+	vec3 background = background_colour;
 
 	// Stars read white to faint blue -- never as bright or saturated as the
 	// gameplay cyan wireframes, which must stay the visually dominant colour.
