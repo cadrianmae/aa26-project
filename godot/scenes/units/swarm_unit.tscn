@@ -31,9 +31,6 @@ script = ExtResource("2_8ol4v")
 [node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1763550264]
 shape = SubResource("SphereShape3D_2n87u")
 
-[node name="OffsetPursue" type="Node" parent="." unique_id=553600898]
-script = ExtResource("3_wvh5g")
-
 [node name="Flee" type="Node" parent="." unique_id=290573163]
 script = ExtResource("4_mc7j1")
 weight = 40.0
@@ -49,6 +46,9 @@ weight = 20.0
 [node name="Cohesion" type="Node" parent="." unique_id=1982424125]
 script = ExtResource("7_27wrs")
 weight = 8.0
+
+[node name="OffsetPursue" type="Node" parent="." unique_id=553600898]
+script = ExtResource("3_wvh5g")
 
 [node name="StateMachine" type="Node" parent="." unique_id=846717208]
 script = ExtResource("8_5rptg")
