@@ -15,13 +15,13 @@ class_name MusicDirector
 extends AudioStreamPlayer
 
 ## The phases the game can be in. More will be added as the game grows.
-enum Phase { LAUNCH, FEAST, COMBAT, PATROL, FLEE, VICTORY, DEFEAT }
+enum Phase { LAUNCH, HARVEST, COMBAT, PATROL, FLEE, VICTORY, DEFEAT }
 
 ## Track for the launch phase.
 @export var launch_theme: AudioStream
 
-## Track for the feast phase. Left unassigned until that phase exists.
-@export var feast_theme: AudioStream
+## Track for the harvest phase. Left unassigned until that phase exists.
+@export var harvest_theme: AudioStream
 
 ## Track for the combat phase. Left unassigned until that phase exists.
 @export var combat_theme: AudioStream
@@ -91,8 +91,8 @@ func _stream_for_phase(phase: Phase) -> AudioStream:
 	match phase:
 		Phase.LAUNCH:
 			return launch_theme
-		Phase.FEAST:
-			return feast_theme
+		Phase.HARVEST:
+			return harvest_theme
 		Phase.COMBAT:
 			return combat_theme
 		Phase.PATROL:

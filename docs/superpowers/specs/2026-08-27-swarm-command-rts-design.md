@@ -17,8 +17,8 @@ Four things are new:
 | Was | Now |
 |---|---|
 | Free 3D space combat | **2.5D top-down RTS.** Movement locked to the XZ plane, perspective camera tilted about 60 degrees, following the player ship |
-| Deploy on a cooldown | **Harvest and spend.** Units feast on caustic asteroids for alloy; a swarm factory grows batches of 5-15 and upgrades five times |
-| Two intents (FOLLOW / ATTACK) | **Five intents:** FEAST, FOLLOW (defence), ATTACK, RECALL, PATROL |
+| Deploy on a cooldown | **Harvest and spend.** Units harvest on caustic asteroids for alloy; a swarm factory grows batches of 5-15 and upgrades five times |
+| Two intents (FOLLOW / ATTACK) | **Five intents:** HARVEST, FOLLOW (defence), ATTACK, RECALL, PATROL |
 | Untextured low-poly | **Wireframe rendering** in the style of the original Elite. Custom shader, per-faction colour |
 
 The 3D-to-2.5D move is a simplification, not a rewrite. Steering collapses to
@@ -36,7 +36,7 @@ match.
 
 **Core loop:**
 
-1. **Feast** — units scrape caustic asteroids for alloy and convert it to
+1. **Harvest** — units scrape caustic asteroids for alloy and convert it to
    bio-alloy. The asteroids corrode them while they work, so harvesting has a
    running health cost and the flee reflex fires during economy, not only
    during combat.
@@ -47,7 +47,7 @@ match.
 4. **Fight** — you fly and fire your own weapon while the swarm engages,
    flinches, scatters and re-coheres around you.
 
-**Strategic tension:** every unit feasting is a unit not screening you. One
+**Strategic tension:** every unit harvesting is a unit not screening you. One
 resource pool, no build menu. The only decision is where the creatures point.
 
 **The lifeform read** is unchanged and load-bearing for the brief: the swarm is
@@ -69,7 +69,7 @@ via an `allegiance` flag.
 | `SwarmCoordinator` | `Node` | Broadcasts intent, holds the bio-alloy pool, receives deposits. Owns no roster | new |
 | `SwarmFactory` | `Node` | Grows batches of 5-15, spends alloy, holds upgrade level 1-5. Child of the ship | new |
 | `Ship` | `CharacterBody3D` | Planar flight, weapon, health, hosts the factory. Same class both sides | `MRP/player_steering.gd`, `fire_at_target_global_state.gd` |
-| `Asteroid` | `StaticBody3D` | Caustic alloy node. Finite yield, corrodes units feasting on it | new |
+| `Asteroid` | `StaticBody3D` | Caustic alloy node. Finite yield, corrodes units harvesting on it | new |
 | `PlayerController` | `Node` | Input to `move()` / `fire()` / `set_intent()` / `designate()` | `MRP/player_steering.gd` |
 | `CommanderAI` | `StateMachine` | Enemy brain: expand / press / retreat, same interface as `PlayerController` | `MRP/state_machine.gd` |
 
@@ -100,7 +100,7 @@ the unit's own situation drives the **current state**. A unit may override
 intent for survival, and that override is the aliveness beat.
 
 **Tier 1, swarm intent** (broadcast by `SwarmCoordinator`, units listen):
-`FEAST` / `FOLLOW` / `ATTACK` / `RECALL` / `PATROL`.
+`HARVEST` / `FOLLOW` / `ATTACK` / `RECALL` / `PATROL`.
 
 **Tier 2, per-unit state.** Each state is a recipe of composed steering
 forces — no new movement code per state, only re-weighting.
@@ -108,9 +108,9 @@ forces — no new movement code per state, only re-weighting.
 | State | Entered when | Steering recipe | Exits to |
 |---|---|---|---|
 | `LAUNCH` | freshly grown by the factory | `seek` toward the ship | `FOLLOW` on arrival |
-| `FOLLOW` | intent FOLLOW, safe | `separation + alignment + cohesion` + `offset_pursue` at a formation slot | `FEAST` / `ENGAGE` / `PATROL` / `FLEE` |
-| `FEAST` | intent FEAST, asteroid in range | `arrive` at the asteroid, then drain alloy while taking corrosion damage | `DEPOSIT` when full, `FLEE` on low health |
-| `DEPOSIT` | carrying alloy | `arrive` at the ship, transfer to the pool | `FEAST` / `FOLLOW` |
+| `FOLLOW` | intent FOLLOW, safe | `separation + alignment + cohesion` + `offset_pursue` at a formation slot | `HARVEST` / `ENGAGE` / `PATROL` / `FLEE` |
+| `HARVEST` | intent HARVEST, asteroid in range | `arrive` at the asteroid, then drain alloy while taking corrosion damage | `DEPOSIT` when full, `FLEE` on low health |
+| `DEPOSIT` | carrying alloy | `arrive` at the ship, transfer to the pool | `HARVEST` / `FOLLOW` |
 | `ENGAGE` | intent ATTACK, target designated | `pursue` (lead the target) + `separation` | `DETONATE` / `FLEE` |
 | `PATROL` | intent PATROL, point designated | `follow_path` around the point + flocking triple | `ENGAGE` / `FLEE` |
 | `FLEE` | threat or fire in danger radius; reflex, overrides intent | `flee` from the threat + `separation` | back to the intent's state when safe |
@@ -138,7 +138,7 @@ aa26-project/
     │   ├── agents/          swarm_unit.gd, ship.gd
     │   ├── steering/        steering_behaviour.gd + one file per behaviour
     │   ├── states/
-    │   │   ├── unit/        launch, follow, feast, deposit, engage, patrol, flee
+    │   │   ├── unit/        launch, follow, harvest, deposit, engage, patrol, flee
     │   │   └── commander/   expand, press, retreat
     │   ├── swarm/           swarm.gd, swarm_coordinator.gd, swarm_factory.gd
     │   ├── control/         player_controller.gd, commander_ai.gd, follow_camera.gd
@@ -178,7 +178,7 @@ gets marked.
 |---|---|---|---|
 | 0+1 — Barebones build | `feat/vertical-slice` | Folder tree, addons, input map, wireframe shader, tilted follow camera. Ship flies on XZ. `SwarmUnit` with WTPRS and integration. Five units hold formation via offset pursue. Runs and is playable | Thu 27 |
 | 2 — Swarm proper | `feat/flocking`, `feat/unit-fsm` | Spatial hash, flocking triple, per-unit FSM, FLEE reflex, unit health and death | Sat 29 |
-| 3 — Economy | `feat/feast-economy`, `feat/factory` | Caustic asteroids, FEAST and DEPOSIT, alloy pool, factory batches and upgrades | Mon 31 |
+| 3 — Economy | `feat/harvest-economy`, `feat/factory` | Caustic asteroids, HARVEST and DEPOSIT, alloy pool, factory batches and upgrades | Mon 31 |
 | 4 — Enemy and Groovy | `feat/commander-ai`, `feat/vfx`, `feat/readme` | Mirror `CommanderAI`, win and lose conditions, then trails, sound, PC build, README, YouTube video | Tue 1 |
 
 **Tuesday afternoon is reserved for the build, README and video.** Those carry

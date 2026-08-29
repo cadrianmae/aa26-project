@@ -15,7 +15,7 @@ pipeline, described once below rather than per track.
 - LAUNCH: `blue_danube.ogg` - "An der schonen blauen Donau" (The Blue
   Danube), Op. 314, by Johann Strauss II, 1866. Public domain; Strauss II
   died in 1899.
-- FEAST: `jupiter.ogg` - "Jupiter, the Bringer of Jollity", from *The
+- HARVEST: `jupiter.ogg` - "Jupiter, the Bringer of Jollity", from *The
   Planets*, Op. 32, by Gustav Holst, 1914-1916. Public domain; Holst died
   in 1934.
 - COMBAT: `ride_of_the_valkyries.ogg` - "Ride of the Valkyries", from *Die

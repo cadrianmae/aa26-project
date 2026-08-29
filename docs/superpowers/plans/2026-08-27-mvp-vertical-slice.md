@@ -1076,7 +1076,7 @@ Named here so the omissions read as decisions rather than gaps, and so Saturday'
 
 - **Flocking.** Separation, alignment and cohesion, plus the `Swarm` spatial hash. Phase 2.
 - **The FSM.** Units have no states yet; they only ever hold formation. Phase 2.
-- **The economy.** Asteroids, feasting, alloy, the factory. Phase 3.
+- **The economy.** Asteroids, harvesting, alloy, the factory. Phase 3.
 - **The enemy.** `CommanderAI` and the mirror faction. Phase 4.
 - **Weapons.** The `fire` action is mapped but unbound.
 - **Sound.** Phase 4.

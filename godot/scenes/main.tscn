@@ -5,7 +5,7 @@
 [ext_resource type="Script" uid="uid://btxnggqj3n2nw" path="res://scripts/control/follow_camera.gd" id="7_trceg"]
 [ext_resource type="Script" path="res://scripts/audio/music_director.gd" id="8_musdir"]
 [ext_resource type="AudioStream" path="res://assets/audio/blue_danube.ogg" id="9_launch"]
-[ext_resource type="AudioStream" path="res://assets/audio/jupiter.ogg" id="10_feast"]
+[ext_resource type="AudioStream" path="res://assets/audio/jupiter.ogg" id="10_harvest"]
 [ext_resource type="AudioStream" path="res://assets/audio/ride_of_the_valkyries.ogg" id="11_combat"]
 [ext_resource type="AudioStream" path="res://assets/audio/great_gate_of_kiev.ogg" id="12_patrol"]
 [ext_resource type="AudioStream" path="res://assets/audio/baba_yagas_hut.ogg" id="13_flee"]
@@ -50,7 +50,7 @@ target = NodePath("../CommanderShip")
 [node name="MusicDirector" type="AudioStreamPlayer" parent="."]
 script = ExtResource("8_musdir")
 launch_theme = ExtResource("9_launch")
-feast_theme = ExtResource("10_feast")
+harvest_theme = ExtResource("10_harvest")
 combat_theme = ExtResource("11_combat")
 patrol_theme = ExtResource("12_patrol")
 flee_theme = ExtResource("13_flee")
