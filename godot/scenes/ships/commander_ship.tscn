@@ -1,8 +1,9 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/agents/ship.gd" id="1_orgs7"]
 [ext_resource type="Script" path="res://scripts/world/hull.gd" id="2_rneqq"]
 [ext_resource type="Script" path="res://scripts/steering/player_steering_behaviour.gd" id="3_st06i"]
+[ext_resource type="Script" path="res://scripts/swarm/swarm_coordinator.gd" id="4_coord"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_3h2om"]
 size = Vector3(2.4, 0.6, 4)
@@ -21,3 +22,6 @@ shape = SubResource("BoxShape3D_3h2om")
 
 [node name="PlayerSteering" type="Node" parent="."]
 script = ExtResource("3_st06i")
+
+[node name="SwarmCoordinator" type="Node" parent="."]
+script = ExtResource("4_coord")
