@@ -1,4 +1,4 @@
-# Design Spec — Hybrid Bio-Tech Swarm Command (2.5D RTS)
+# Design Spec — Thargoid Swarm Command (2.5D RTS)
 
 **Module:** CMPU 4031 Autonomous Agents (Artifact)
 **Author:** Mae Capacite (C21348423)
@@ -16,10 +16,10 @@ Four things are new:
 
 | Was | Now |
 |---|---|
-| Free 3D space combat | **2.5D top-down RTS.** Movement locked to the XZ plane, perspective camera tilted about 60 degrees, following the player ship |
-| Deploy on a cooldown | **Harvest and spend.** Units harvest on caustic asteroids for alloy; a swarm factory grows batches of 5-15 and upgrades five times |
+| Free 3D space combat | **2.5D top-down RTS.** Movement locked to the XZ plane, perspective camera tilted about 60 degrees, following the player Interceptor |
+| Deploy on a cooldown | **Harvest and spend.** Thargons harvest Thargoid Barnacles growing on asteroids for Meta-Alloys; a swarm factory grows batches of 5-15 and upgrades five times |
 | Two intents (FOLLOW / ATTACK) | **Five intents:** HARVEST, FOLLOW (defence), ATTACK, RECALL, PATROL |
-| Untextured low-poly | **Wireframe rendering** in the style of the original Elite. Custom shader, per-faction colour |
+| Untextured low-poly | **Flat-shaded solid polygon rendering**, in the style of Frontier / Elite II (1993). Custom shader, per-faction colour. Original wireframe rendering (Elite, 1984) retained behind a `render_style` toggle on `Hull` |
 
 The 3D-to-2.5D move is a simplification, not a rewrite. Steering collapses to
 the XZ plane, formation offsets become 2D, and `look_at` stops needing an
@@ -27,34 +27,50 @@ up-vector guard for near-vertical flight.
 
 ## 2. Concept
 
-The player pilots a living bio-tech commander ship and commands a swarm of
-small living-metal creatures. The enemy is a mirror: the same ship, the same
-swarm, driven by `CommanderAI`.
+This is a spin-off set in the Elite Dangerous universe, among the Thargoids.
+Both sides are Thargoid — this is not humans against aliens, but two rival
+hives contesting the same territory. Canon already has Thargoids fighting over
+the Barnacle sites they seeded themselves one to two million years ago, so a
+second hive contesting the same seeded asteroid belt is close to canon rather
+than an invented premise.
 
-**Win condition:** destroy the enemy commander ship. Losing your own ends the
+The player pilots a Thargoid Interceptor and commands a swarm of Thargons. The
+enemy is a mirror: another Interceptor, another swarm, driven by
+`CommanderAI`.
+
+**Win condition:** destroy the enemy Interceptor. Losing your own ends the
 match.
 
 **Core loop:**
 
-1. **Harvest** — units scrape caustic asteroids for alloy and convert it to
-   bio-alloy. The asteroids corrode them while they work, so harvesting has a
-   running health cost and the flee reflex fires during economy, not only
+1. **Harvest** — Thargons work Thargoid Barnacles growing on asteroids,
+   drawing off the Meta-Alloys the Barnacle extracts and converts from the
+   rock. The Barnacle corrodes the Thargon while it works, so harvesting has
+   a running health cost and the flee reflex fires during economy, not only
    during combat.
-2. **Spend** — the swarm factory, a module on your ship, slowly grows new
-   units in batches of 5-15. Upgradeable five times.
+2. **Spend** — the swarm factory, a module on your Interceptor, slowly grows
+   new Thargons in batches of 5-15. Upgradeable five times.
 3. **Command** — hotkeys broadcast intent to the swarm. Right-click or a
    reticle designates a target.
 4. **Fight** — you fly and fire your own weapon while the swarm engages,
    flinches, scatters and re-coheres around you.
 
-**Strategic tension:** every unit harvesting is a unit not screening you. One
-resource pool, no build menu. The only decision is where the creatures point.
+**Strategic tension:** every Thargon harvesting is a Thargon not screening
+you. One resource pool, no build menu. The only decision is where the
+creatures point.
 
 **The lifeform read** is unchanged and load-bearing for the brief: the swarm is
-**emergent, not owned**. Units are the first-class autonomous agents; "a swarm"
-is whichever units are currently near each other on the same side. Join, leave,
-split and merge all fall out of per-unit rules. Aliveness comes from flocking,
-the flee reflex, and re-cohering after losses — not from a face.
+**emergent, not owned**. Thargons are the first-class autonomous agents; "a
+swarm" is whichever Thargons are currently near each other on the same side.
+Join, leave, split and merge all fall out of per-unit rules. Aliveness comes
+from flocking, the flee reflex, and re-cohering after losses — not from a
+face.
+
+**Deliberate deviation from canon:** in Elite Dangerous, Thargons are pure
+combat drones controlled by the parent ship's hive mind, going inert without
+it. This project's Thargons harvest as well as fight — a conscious gameplay
+change, not an oversight, made so one unit type can carry both the economy and
+the combat.
 
 ## 3. Class architecture
 
@@ -64,14 +80,14 @@ via an `allegiance` flag.
 | Class | Extends | Responsibility | Grounding |
 |---|---|---|---|
 | `SteeringBehaviour` | `Node` | Base: `weight`, `enabled`, `on_draw_gizmos()`, `calculate()` | `MRP/steering_behavior.gd` |
-| `SwarmUnit` | `CharacterBody3D` | The creature. WTPRS accumulation, Euler integration, banking, `allegiance`, `flock_id`, health, carried alloy | `MRP/boid.gd:141-158`, `:172-197` |
-| `Swarm` | `School` | Spawns units, owns the spatial hash and neighbour caps, one per faction | `MRP/school.gd` |
-| `SwarmCoordinator` | `Node` | Broadcasts intent, holds the bio-alloy pool, receives deposits. Owns no roster | new |
-| `SwarmFactory` | `Node` | Grows batches of 5-15, spends alloy, holds upgrade level 1-5. Child of the ship | new |
-| `Ship` | `CharacterBody3D` | Planar flight, weapon, health, hosts the factory. Same class both sides | `MRP/player_steering.gd`, `fire_at_target_global_state.gd` |
-| `Asteroid` | `StaticBody3D` | Caustic alloy node. Finite yield, corrodes units harvesting on it | new |
+| `SwarmUnit` | `CharacterBody3D` | A Thargon. WTPRS accumulation, Euler integration, banking, `allegiance`, `flock_id`, health, carried Meta-Alloys | `MRP/boid.gd:141-158`, `:172-197` |
+| `Swarm` | `School` | Spawns Thargons, owns the spatial hash and neighbour caps, one per hive | `MRP/school.gd` |
+| `SwarmCoordinator` | `Node` | Broadcasts intent, holds the Meta-Alloy pool, receives deposits. Owns no roster | new |
+| `SwarmFactory` | `Node` | Grows batches of 5-15, spends Meta-Alloys, holds upgrade level 1-5. Child of the ship | new |
+| `Ship` | `CharacterBody3D` | A Thargoid Interceptor. Planar flight, weapon, health, hosts the factory. Same class both sides | `MRP/player_steering.gd`, `fire_at_target_global_state.gd` |
+| `Asteroid` | `StaticBody3D` | Hosts a Thargoid Barnacle. Finite yield per harvest pass, regrows slowly, corrodes Thargons harvesting on it | new |
 | `PlayerController` | `Node` | Input to `move()` / `fire()` / `set_intent()` / `designate()` | `MRP/player_steering.gd` |
-| `CommanderAI` | `StateMachine` | Enemy brain: expand / press / retreat, same interface as `PlayerController` | `MRP/state_machine.gd` |
+| `CommanderAI` | `StateMachine` | Rival hive's brain: expand / press / retreat, same interface as `PlayerController` | `MRP/state_machine.gd` |
 
 **Concrete behaviours**, each a child node in WTPRS priority order: `Seek`,
 `Arrive`, `Flee`, `Pursue`, `OffsetPursue`, `Separation`, `Alignment`,
@@ -81,8 +97,9 @@ via an `allegiance` flag.
 
 `PlayerController` and `CommanderAI` present an identical interface onto
 `Ship` + `SwarmCoordinator`. The ship never knows which is driving it, so the
-enemy AI is testable by pointing it at the player's own ship and the mirror
-match costs nothing extra to build.
+rival hive's AI is testable by pointing it at the player's own ship, and the
+mirror match — two Thargoid hives, identical rules — costs nothing extra to
+build.
 
 ### Separation of concerns
 
@@ -96,10 +113,12 @@ SOLID applied rather than recited.
 Duggan's `StateMachine` already provides both tiers: `current_state._think()`
 runs, then `global_state._think()`, every frame
 (`MRP/state_machine.gd:39-42`). Swarm intent rides as the **global state**;
-the unit's own situation drives the **current state**. A unit may override
-intent for survival, and that override is the aliveness beat.
+the Thargon's own situation drives the **current state**. A Thargon may
+override intent for survival, and that override is the aliveness beat — in
+fiction, the species' "overdeveloped survival instincts" showing up at unit
+scale.
 
-**Tier 1, swarm intent** (broadcast by `SwarmCoordinator`, units listen):
+**Tier 1, swarm intent** (broadcast by `SwarmCoordinator`, Thargons listen):
 `HARVEST` / `FOLLOW` / `ATTACK` / `RECALL` / `PATROL`.
 
 **Tier 2, per-unit state.** Each state is a recipe of composed steering
@@ -107,17 +126,17 @@ forces — no new movement code per state, only re-weighting.
 
 | State | Entered when | Steering recipe | Exits to |
 |---|---|---|---|
-| `LAUNCH` | freshly grown by the factory | `seek` toward the ship | `FOLLOW` on arrival |
+| `LAUNCH` | freshly grown by the factory | `seek` toward the Interceptor | `FOLLOW` on arrival |
 | `FOLLOW` | intent FOLLOW, safe | `separation + alignment + cohesion` + `offset_pursue` at a formation slot | `HARVEST` / `ENGAGE` / `PATROL` / `FLEE` |
-| `HARVEST` | intent HARVEST, asteroid in range | `arrive` at the asteroid, then drain alloy while taking corrosion damage | `DEPOSIT` when full, `FLEE` on low health |
-| `DEPOSIT` | carrying alloy | `arrive` at the ship, transfer to the pool | `HARVEST` / `FOLLOW` |
+| `HARVEST` | intent HARVEST, Barnacle in range | `arrive` at the Barnacle, then draw off Meta-Alloys while taking corrosion damage | `DEPOSIT` when full, `FLEE` on low health |
+| `DEPOSIT` | carrying Meta-Alloys | `arrive` at the Interceptor, transfer to the pool | `HARVEST` / `FOLLOW` |
 | `ENGAGE` | intent ATTACK, target designated | `pursue` (lead the target) + `separation` | `DETONATE` / `FLEE` |
 | `PATROL` | intent PATROL, point designated | `follow_path` around the point + flocking triple | `ENGAGE` / `FLEE` |
 | `FLEE` | threat or fire in danger radius; reflex, overrides intent | `flee` from the threat + `separation` | back to the intent's state when safe |
 | `DETONATE` | within strike distance | none — trigger blast, remove the unit | terminal |
 
-`FLEE` is a reflex edge from any state. `DETONATE` and death remove the unit;
-neighbours re-query the grid and re-cohere the next frame.
+`FLEE` is a reflex edge from any state. `DETONATE` and death remove the
+Thargon; neighbours re-query the grid and re-cohere the next frame.
 
 **Course mapping:** W2 seek/arrive, W3 path following and player steering,
 W5 SOLID and WTPRS, W6 pursue and offset pursue, W7-10 wander/avoidance/FSM,
@@ -153,19 +172,25 @@ aa26-project/
 
 Grouping scripts by role rather than assets-beside-scenes is a deliberate
 departure from the Godot doc's default. That default optimises for asset-heavy
-projects; this one is code-heavy with almost no imported art, because wireframe
-rendering means the meshes are CSG primitives plus a shader.
+projects; this one is code-heavy with almost no imported art, because both
+render styles work from CSG primitives plus a shader rather than modelled
+meshes.
 
-## 6. Visual design — wireframe
+## 6. Visual design — Frontier-style solids, wireframe retained
 
-Rendering is in the style of the original Elite: unlit wireframe hulls with
-additive glow, per-faction colour (player cyan, enemy amber), on a dark field.
+Rendering follows Frontier / Elite II (1993): unlit, flat-shaded solid hulls,
+per-faction colour (player cyan — matching the canon Cyclops Interceptor's
+grey/cyan presentation — rival hive amber), on a dark field. The original
+wireframe rendering, in the style of Elite (1984), is not discarded; it is
+kept as an alternative `render_style` on the `Hull` class, so both shaders
+ship and either can be selected.
 
-This is not only an aesthetic choice. It earns the grade-1 "custom shaders"
-criterion directly, it costs a fraction of what modelling would, and it solves
-a genuine 2.5D readability problem — solid shaded units at a tilted camera
-angle merge into an indistinct clump, whereas wireframes stay legible when
-fifty of them overlap.
+This is not only an aesthetic choice. Custom shaders earn the grade-1
+"custom shaders" criterion directly, they cost a fraction of what modelling
+would, and either style solves a genuine 2.5D readability problem — plain
+textured units at a tilted camera angle merge into an indistinct clump,
+whereas flat-shaded or wireframe hulls stay legible when fifty of them
+overlap.
 
 ## 7. Build strategy
 
@@ -178,8 +203,8 @@ gets marked.
 |---|---|---|---|
 | 0+1 — Barebones build | `feat/vertical-slice` | Folder tree, addons, input map, wireframe shader, tilted follow camera. Ship flies on XZ. `SwarmUnit` with WTPRS and integration. Five units hold formation via offset pursue. Runs and is playable | Thu 27 |
 | 2 — Swarm proper | `feat/flocking`, `feat/unit-fsm` | Spatial hash, flocking triple, per-unit FSM, FLEE reflex, unit health and death | Sat 29 |
-| 3 — Economy | `feat/harvest-economy`, `feat/factory` | Caustic asteroids, HARVEST and DEPOSIT, alloy pool, factory batches and upgrades | Mon 31 |
-| 4 — Enemy and Groovy | `feat/commander-ai`, `feat/vfx`, `feat/readme` | Mirror `CommanderAI`, win and lose conditions, then trails, sound, PC build, README, YouTube video | Tue 1 |
+| 3 — Economy | `feat/harvest-economy`, `feat/factory` | Thargoid Barnacles on asteroids, HARVEST and DEPOSIT, Meta-Alloy pool, factory batches and upgrades | Mon 31 |
+| 4 — Enemy and Groovy | `feat/commander-ai`, `feat/vfx`, `feat/readme` | Mirror `CommanderAI` (rival hive), win and lose conditions, then trails, sound, PC build, README, YouTube video | Tue 1 |
 
 **Tuesday afternoon is reserved for the build, README and video.** Those carry
 a full third of the marks and cannot be salvaged after the deadline. If
@@ -252,6 +277,12 @@ Deliberately flexible; the class boundaries absorb changes here.
 - Reynolds, C. W. — Boids: <https://www.red3d.com/cwr/boids/>
 - Duggan, B. — `skooter500/miniature-rotary-phone`, `behaviors/`
 - Duggan, B. — `skooter500/UnitySteeringBehaviours`, source of the WTPRS name
+- *Elite Dangerous* Fandom wiki — Thargoid, Thargon, Thargoid Interceptor,
+  Meta-Alloys, Thargoid Barnacle. See
+  [`../../gameplay/06-references.md`](../../gameplay/06-references.md) for
+  full URLs. *Elite Dangerous* and the Thargoids are the intellectual
+  property of Frontier Developments plc; this is a non-commercial student
+  artefact for a university assignment.
 - Godot project organisation and GDScript style guide: see
   `CLAUDE_SOURCES.md`
 - Marking scheme: `docs/assignment-spec.md`

@@ -1,4 +1,4 @@
-# Hybrid Bio-Tech Swarm Command — Gameplay
+# Thargoid Swarm Command — Gameplay
 
 **Module:** CMPU 4031 Autonomous Agents
 **Author:** Mae Capacite (C21348423)
@@ -18,8 +18,8 @@ that does not exist.
 1. [Concept and core loop](01-concept.md) — the pitch, the four-stage loop, what the player does
 2. [The swarm](02-the-swarm.md) — emergent membership, steering, WTPRS
 3. [The state machine](03-state-machine.md) — two tiers, and the flee reflex
-4. [The economy](04-economy.md) — caustic asteroids, alloy, the factory
-5. [The opposition](05-opposition.md) — the mirror commander, winning and losing
+4. [The economy](04-economy.md) — Thargoid Barnacles, Meta-Alloys, the factory
+5. [The opposition](05-opposition.md) — the rival hive, winning and losing
 6. [References](06-references.md) — sources and attribution
 
 ---
@@ -30,7 +30,7 @@ Honest status as of the start of Phase 2.
 
 | System | Status |
 |---|---|
-| Wireframe rendering, custom shader | Built |
+| Flat-shaded rendering, custom shader (wireframe retained as a toggle) | Built |
 | Parallax starfield, three layers | Built |
 | World-space dust particles | Built |
 | Ship flight on the XZ plane | Built |
@@ -64,7 +64,7 @@ emphasis, before-and-after panels. Keep the editable source in
 | Diagram | Tool | Where | Done |
 |---|---|---|---|
 | Unit state machine | Mermaid | [The state machine](03-state-machine.md) | [x] |
-| Alloy flow | Mermaid | [The economy](04-economy.md) | [ ] |
+| Meta-Alloy flow | Mermaid | [The economy](04-economy.md) | [ ] |
 | Core loop | Either | [Concept and core loop](01-concept.md) | [ ] |
 | Emergent membership | Excalidraw | [The swarm](02-the-swarm.md) | [ ] |
 | WTPRS accumulation | Excalidraw | [The swarm](02-the-swarm.md) | [ ] |

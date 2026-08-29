@@ -24,10 +24,29 @@
 - Assignment brief and marking scheme:
   [`../assignment-spec.md`](../assignment-spec.md)
 
+## Setting and lore
+
+- *Elite Dangerous* Fandom wiki — Thargoid:
+  <https://elite-dangerous.fandom.com/wiki/Thargoid>
+- *Elite Dangerous* Fandom wiki — Thargon:
+  <https://elite-dangerous.fandom.com/wiki/Thargon>
+- *Elite Dangerous* Fandom wiki — Thargoid Interceptor:
+  <https://elite-dangerous.fandom.com/wiki/Thargoid_Interceptor>
+- *Elite Dangerous* Fandom wiki — Meta-Alloys:
+  <https://elite-dangerous.fandom.com/wiki/Meta-Alloys>
+- *Elite Dangerous* Fandom wiki — Thargoid Barnacle:
+  <https://elite-dangerous.fandom.com/wiki/Thargoid_Barnacle>
+
+*Elite Dangerous* and the Thargoids are the intellectual property of Frontier
+Developments plc. This project is a non-commercial student artefact made for
+a university assignment (CMPU 4031), not an affiliated or commercial work.
+
 ## Visual reference
 
-- *Elite* (Acornsoft, 1984) — wireframe rendering, and the source of the
-  visual language this artefact borrows.
+- *Elite II: Frontier* (Frontier Developments, 1993) — flat-shaded solid
+  polygon rendering, the primary visual language this artefact borrows.
+- *Elite* (Acornsoft, 1984) — wireframe rendering. Retained as an alternative
+  `render_style` on the `Hull` class rather than replaced outright.
 
 ## Audio
 

@@ -9,15 +9,16 @@
 This is the central design commitment, and everything else follows from it.
 
 There is no roster. No object holds a list called "the swarm". A swarm is
-simply *whichever units are currently near each other and on the same side*.
+simply *whichever Thargons are currently near each other and on the same
+side*.
 
-Each unit asks a spatial index, every frame, "who is near me, on my side?" and
-steers according to what it finds. From that one question, four behaviours
-fall out for free:
+Each Thargon (`SwarmUnit` in code) asks a spatial index, every frame, "who is
+near me, on my side?" and steers according to what it finds. From that one
+question, four behaviours fall out for free:
 
-- **Join** — a newly grown unit flies toward the group and starts seeing
+- **Join** — a newly grown Thargon flies toward the group and starts seeing
   neighbours
-- **Leave** — a unit dies; its neighbours re-query next frame and re-cohere
+- **Leave** — a Thargon dies; its neighbours re-query next frame and re-cohere
 - **Split** — a group pulled in two directions separates naturally
 - **Merge** — two groups drifting together start seeing each other
 
@@ -42,14 +43,14 @@ and this is the structural reason it does.
 
 ## Finding neighbours cheaply
 
-The naive way to answer "who is near me" is for every unit to check every other
-unit. That is O(n squared): at 100 units it is 9,900 distance checks per frame,
-at 1,000 units it is 999,000.
+The naive way to answer "who is near me" is for every Thargon to check every
+other Thargon. That is O(n squared): at 100 units it is 9,900 distance checks
+per frame, at 1,000 units it is 999,000.
 
 Instead the swarm keeps a **uniform spatial hash**. The world is divided into
-cubic cells, every unit is binned into a cell once per frame, and a unit asking
-for neighbours only tests the units in its own cell and the 26 around it — 27
-cells in total.
+cubic cells, every Thargon is binned into a cell once per frame, and a Thargon
+asking for neighbours only tests the units in its own cell and the 26 around
+it — 27 cells in total.
 
 Binning is O(n) and there is no tree to rebuild, which is the right trade for a
 few hundred agents that all move every frame.
@@ -64,16 +65,16 @@ correction is documented at its site in the code:
    stopping early keeps whichever units the iteration reached first, not the
    nearest ones. Fixed by collecting all candidates, sorting by distance, then
    truncating.
-3. **Alignment latching its last force.** A unit that loses all its neighbours
-   kept applying its previous alignment force forever. Fixed by contributing
-   nothing when there are no neighbours.
+3. **Alignment latching its last force.** A Thargon that loses all its
+   neighbours kept applying its previous alignment force forever. Fixed by
+   contributing nothing when there are no neighbours.
 
 ---
 
-## How a unit decides where to go
+## How a Thargon decides where to go
 
-Each unit runs several steering behaviours at once and combines them into one
-force. The combination is **WTPRS**: Weighted Truncated Running Sum with
+Each Thargon runs several steering behaviours at once and combines them into
+one force. The combination is **WTPRS**: Weighted Truncated Running Sum with
 Prioritisation.
 
 > **[DIAGRAM 3 — WTPRS force accumulation]**
@@ -111,7 +112,7 @@ writing the last paragraph in your own words.]
 | Separation | Get away from close neighbours | Inverse-distance falloff, so near neighbours dominate. Magnitude kept. |
 | Alignment | Match neighbours' average heading | Averages headings, not velocities, so it is speed-independent |
 | Cohesion | Move toward the neighbours' centre | Normalised to unit length, so distance sets direction only |
-| Offset pursue | Hold a slot relative to the commander | Slot is captured from where the unit starts, not authored |
+| Offset pursue | Hold a slot relative to the Interceptor | Slot is captured from where the Thargon starts, not authored |
 | Flee | Get away from a threat | Range-gated, so a distant threat costs nothing |
 
 Separation keeps its magnitude and cohesion discards its own. That asymmetry is
