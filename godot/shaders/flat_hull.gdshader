@@ -20,5 +20,10 @@ void fragment() {
 	float light = clamp(ambient + diffuse, 0.0, 1.0);
 
 	ALBEDO = COLOR.rgb * light * brightness;
-	ALPHA = COLOR.a;
+	// Deliberately does NOT write ALPHA. Godot flags any shader that touches
+	// ALPHA as transparent and drops it into the alpha queue, where depth
+	// writing is off and faces draw in submission order rather than depth
+	// order -- so the far side of a hull paints over the near side. Hulls are
+	// always opaque, so leaving ALPHA alone keeps the material opaque and
+	// depth-sorted.
 }
