@@ -1,21 +1,83 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/agents/swarm_unit.gd" id="1_20mkj"]
 [ext_resource type="Script" path="res://scripts/world/wireframe_hull.gd" id="2_8ol4v"]
 [ext_resource type="Script" path="res://scripts/steering/offset_pursue_behaviour.gd" id="3_wvh5g"]
+[ext_resource type="Script" path="res://scripts/steering/flee_behaviour.gd" id="4_mc7j1"]
+[ext_resource type="Script" path="res://scripts/steering/separation_behaviour.gd" id="5_3ovvs"]
+[ext_resource type="Script" path="res://scripts/steering/alignment_behaviour.gd" id="6_1j3ou"]
+[ext_resource type="Script" path="res://scripts/steering/cohesion_behaviour.gd" id="7_27wrs"]
+[ext_resource type="Script" path="res://scripts/states/state_machine.gd" id="8_5rptg"]
+[ext_resource type="Script" path="res://scripts/states/unit/follow_state.gd" id="9_8p2q7"]
+[ext_resource type="Script" path="res://scripts/states/unit/flee_state.gd" id="10_7ua7p"]
+[ext_resource type="Script" path="res://scripts/states/unit/launch_state.gd" id="11_yen1x"]
+[ext_resource type="Script" path="res://scripts/states/unit/harvest_state.gd" id="12_kg66f"]
+[ext_resource type="Script" path="res://scripts/states/unit/deposit_state.gd" id="13_qsica"]
+[ext_resource type="Script" path="res://scripts/states/unit/engage_state.gd" id="14_75t7p"]
+[ext_resource type="Script" path="res://scripts/states/unit/patrol_state.gd" id="15_xuuj1"]
+[ext_resource type="Script" path="res://scripts/states/unit/detonate_state.gd" id="16_vsb54"]
+[ext_resource type="Script" path="res://scripts/states/unit/swarm_intent_state.gd" id="17_ano56"]
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_2n87u"]
 radius = 0.7
 
-[node name="SwarmUnit" type="CharacterBody3D"]
+[node name="SwarmUnit" type="CharacterBody3D" unique_id=1479377799]
 motion_mode = 1
 script = ExtResource("1_20mkj")
 
-[node name="Hull" type="MeshInstance3D" parent="."]
+[node name="Hull" type="MeshInstance3D" parent="." unique_id=642946824]
 script = ExtResource("2_8ol4v")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1763550264]
 shape = SubResource("SphereShape3D_2n87u")
 
-[node name="OffsetPursue" type="Node" parent="."]
+[node name="OffsetPursue" type="Node" parent="." unique_id=553600898]
 script = ExtResource("3_wvh5g")
+
+[node name="Flee" type="Node" parent="." unique_id=290573163]
+script = ExtResource("4_mc7j1")
+weight = 40.0
+
+[node name="Separation" type="Node" parent="." unique_id=1996433514]
+script = ExtResource("5_3ovvs")
+weight = 20.0
+
+[node name="Alignment" type="Node" parent="." unique_id=235497636]
+script = ExtResource("6_1j3ou")
+weight = 20.0
+
+[node name="Cohesion" type="Node" parent="." unique_id=1982424125]
+script = ExtResource("7_27wrs")
+weight = 8.0
+
+[node name="StateMachine" type="Node" parent="." unique_id=846717208]
+script = ExtResource("8_5rptg")
+initial_state = NodePath("Follow")
+global_state = NodePath("SwarmIntent")
+
+[node name="Follow" type="Node" parent="StateMachine" unique_id=543439722]
+script = ExtResource("9_8p2q7")
+
+[node name="Flee" type="Node" parent="StateMachine" unique_id=635053023]
+script = ExtResource("10_7ua7p")
+
+[node name="Launch" type="Node" parent="StateMachine" unique_id=1975148326]
+script = ExtResource("11_yen1x")
+
+[node name="Harvest" type="Node" parent="StateMachine" unique_id=1420846882]
+script = ExtResource("12_kg66f")
+
+[node name="Deposit" type="Node" parent="StateMachine" unique_id=1246312375]
+script = ExtResource("13_qsica")
+
+[node name="Engage" type="Node" parent="StateMachine" unique_id=1874849709]
+script = ExtResource("14_75t7p")
+
+[node name="Patrol" type="Node" parent="StateMachine" unique_id=593719690]
+script = ExtResource("15_xuuj1")
+
+[node name="Detonate" type="Node" parent="StateMachine" unique_id=129835385]
+script = ExtResource("16_vsb54")
+
+[node name="SwarmIntent" type="Node" parent="StateMachine" unique_id=704466669]
+script = ExtResource("17_ano56")
