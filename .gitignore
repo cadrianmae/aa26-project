@@ -19,3 +19,15 @@ godot/export_presets.cfg
 # kept out of the repo. Only the final rendered Ogg Vorbis file is committed.
 *.mid
 *.wav
+
+# Obsidian vault. The repo doubles as a vault so diagrams can be authored in
+# Excalidraw alongside the docs they illustrate. The vault configuration is
+# committed so the setup is reproducible, but two things are not:
+#
+#   workspace.json  rewrites itself on every pane move or file open, so it
+#                   would add churn to the commit history for no benefit
+#   plugins/        third-party plugin code, megabytes of it, belongs to its
+#                   own authors and is reinstallable from Obsidian
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/plugins/
