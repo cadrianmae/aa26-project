@@ -15,6 +15,7 @@
 [ext_resource type="Script" uid="uid://7honk5i5a3xo" path="res://scripts/world/dust_field.gd" id="17_dustfield"]
 [ext_resource type="Script" uid="uid://cdfg3bufo2w7h" path="res://scripts/swarm/swarm.gd" id="18_pswarm"]
 [ext_resource type="Script" uid="uid://blfimmr306kxa" path="res://scripts/world/threat.gd" id="19_threat"]
+[ext_resource type="Script" uid="uid://bw5c5pxreen8f" path="res://scripts/world/rally_marker.gd" id="20_rally"]
 
 [sub_resource type="Environment" id="Environment_a8y0u"]
 background_mode = 1
@@ -30,6 +31,9 @@ environment = SubResource("Environment_a8y0u")
 [node name="PlayerSwarm" type="Node" parent="." unique_id=667554090]
 script = ExtResource("18_pswarm")
 draw_gizmos = true
+
+[node name="RallyMarker" type="Node3D" parent="." unique_id=1338207714]
+script = ExtResource("20_rally")
 
 [node name="Units" type="Node3D" parent="." unique_id=1100179967]
 

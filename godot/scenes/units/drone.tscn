@@ -17,6 +17,8 @@
 [ext_resource type="Script" path="res://scripts/states/unit/patrol_state.gd" id="15_xuuj1"]
 [ext_resource type="Script" path="res://scripts/states/unit/detonate_state.gd" id="16_vsb54"]
 [ext_resource type="Script" path="res://scripts/states/unit/swarm_intent_state.gd" id="17_ano56"]
+[ext_resource type="Script" path="res://scripts/steering/arrive_behaviour.gd" id="18_arrive"]
+[ext_resource type="Script" path="res://scripts/states/unit/rally_state.gd" id="19_rally"]
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_2n87u"]
 radius = 0.7
@@ -34,6 +36,12 @@ shape = SubResource("SphereShape3D_2n87u")
 [node name="Flee" type="Node" parent="." unique_id=290573163]
 script = ExtResource("4_mc7j1")
 weight = 40.0
+
+[node name="Arrive" type="Node" parent="." unique_id=1120044501]
+script = ExtResource("18_arrive")
+weight = 24.0
+slowing_radius = 10.0
+enabled = false
 
 [node name="Separation" type="Node" parent="." unique_id=1996433514]
 script = ExtResource("5_3ovvs")
@@ -78,6 +86,9 @@ script = ExtResource("15_xuuj1")
 
 [node name="Detonate" type="Node" parent="StateMachine" unique_id=129835385]
 script = ExtResource("16_vsb54")
+
+[node name="Rally" type="Node" parent="StateMachine" unique_id=1806633254]
+script = ExtResource("19_rally")
 
 [node name="SwarmIntent" type="Node" parent="StateMachine" unique_id=704466669]
 script = ExtResource("17_ano56")
