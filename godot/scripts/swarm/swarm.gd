@@ -13,9 +13,42 @@
 class_name Swarm
 extends Node
 
+## What the swarm has been told to do. One order for the whole swarm, not per
+## unit: the player commands a swarm, and each unit works out for itself what
+## that order means from where it happens to be. That gap between the order and
+## the behaviour is the whole point -- a swarm that obeyed literally would need
+## the player to micromanage fifty units.
+##
+## The intent does NOT force a state. [SwarmIntentState] reads it and decides,
+## and the flee reflex overrides it entirely: a unit told to HARVEST while a
+## threat is on top of it still runs. Orders lose to survival.
+enum Intent {
+	## Hold formation on the commander. The default.
+	HOLD,
+	## Move to [member rally_point] and wait there.
+	RALLY,
+	## Sweep the area around the commander.
+	PATROL,
+	## Work the nearest Barnacle. Phase 3.
+	HARVEST,
+	## Attack the nearest enemy. Phase 4.
+	ENGAGE,
+}
+
+## Emitted when [member intent] changes, so listeners react to the order rather
+## than polling it. Carries both ends so a listener can tell what changed.
+signal intent_changed(from: Intent, to: Intent)
+
 ## Which side this swarm belongs to. Units only ever see neighbours whose
 ## allegiance matches their own.
 @export var allegiance: int = 0
+
+## The standing order for this swarm. Set through [method order], never
+## assigned directly, so the signal cannot be bypassed.
+var intent: Intent = Intent.HOLD
+
+## Where [constant Intent.RALLY] sends the swarm, in world space.
+var rally_point: Vector3 = Vector3.ZERO
 
 ## How far a unit can see a neighbour, in world units.
 @export var neighbour_distance: float = 20.0
@@ -80,6 +113,27 @@ func _ready() -> void:
 func register(unit: Drone) -> void:
 	if not units.has(unit):
 		units.append(unit)
+
+
+## Give the swarm a new standing order.
+##
+## The only way [member intent] changes. Assigning the field directly would
+## skip the signal, so callers go through here and listeners can trust that
+## every change is announced.
+##
+## Re-issuing the order already in force is a no-op rather than a re-emit: the
+## coordinator fires on a key press, and a held key would otherwise emit sixty
+## times a second.
+func order(new_intent: Intent, point: Vector3 = Vector3.ZERO) -> void:
+	# The rally point is set before the early-out, so re-issuing RALLY at a new
+	# location moves the swarm rather than being swallowed as a duplicate.
+	if new_intent == Intent.RALLY:
+		rally_point = point
+	if new_intent == intent:
+		return
+	var previous: Intent = intent
+	intent = new_intent
+	intent_changed.emit(previous, intent)
 
 
 ## Remove a unit, on death or despawn.

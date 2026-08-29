@@ -12,16 +12,47 @@ extends State
 ## The state to enter when a threat is in range.
 @export var flee_state_name: String = "Flee"
 
+## Which state each swarm intent asks a unit to enter.
+##
+## A lookup rather than a match statement, so adding an order is one entry
+## here and one state node -- no branching to extend. Keys are
+## [enum Swarm.Intent] values; values are state node names.
+const INTENT_STATES: Dictionary = {
+	Swarm.Intent.HOLD: "Follow",
+	Swarm.Intent.RALLY: "Rally",
+	Swarm.Intent.PATROL: "Patrol",
+	Swarm.Intent.HARVEST: "Harvest",
+	Swarm.Intent.ENGAGE: "Engage",
+}
+
+func _enter() -> void:
+	pass
 
 func _think() -> void:
-	if unit == null or machine == null:
+	if unit == null or machine == null or unit.swarm == null:
 		return
+
 	if machine.current_state != null and machine.current_state.name == flee_state_name:
 		return
 
+	var next_state: State = null
 	var threat: Threat = Threat.nearest_to(get_tree(), unit.global_position)
-	if threat == null:
+
+	if threat != null:
+		var distance_to_threat: float = threat.global_position.distance_to(unit.global_position)
+
+		if distance_to_threat <= threat.danger_radius:
+			next_state = machine.state_named(flee_state_name)
+			machine.change_state(next_state)
+			return
+
+	var intent: int = unit.swarm.intent
+	var next_state_name: String = INTENT_STATES.get(intent, "")	
+	next_state = machine.state_named(next_state_name)
+
+	if next_state == null:
 		return
-	var distance: float = threat.global_position.distance_to(unit.global_position)
-	if distance <= threat.danger_radius:
-		machine.change_state(machine.state_named(flee_state_name))
+
+	machine.change_state(next_state)
+
+	return
