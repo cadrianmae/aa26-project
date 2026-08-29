@@ -1,4 +1,4 @@
-## Base class for every steering behaviour a [SwarmUnit] or [Ship] can run.
+## Base class for every steering behaviour a [Drone] or [Ship] can run.
 ##
 ## A behaviour is a [Node] child of the agent it steers. The agent collects its
 ## behaviours at run time and never names a concrete one, so adding a behaviour

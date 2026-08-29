@@ -13,11 +13,11 @@
 ##
 ## Movement is constrained to the XZ plane: the Y component of both force and
 ## velocity is zeroed, because this is a 2.5D game.
-class_name SwarmUnit
+class_name Drone
 extends CharacterBody3D
 
 ## Emitted when health reaches zero, before the node is freed.
-signal died(unit: SwarmUnit)
+signal died(unit: Drone)
 
 ## Which side this unit fights for. Player is 0, enemy is 1.
 @export var allegiance: int = 0
@@ -66,7 +66,7 @@ var force: Vector3 = Vector3.ZERO
 
 ## Units near this one on the same side, refreshed once per frame. Shared by
 ## every flocking behaviour so the search runs once rather than three times.
-var neighbours: Array[SwarmUnit] = []
+var neighbours: Array[Drone] = []
 
 ## Set true by any behaviour that needs neighbours. A unit with no flocking
 ## behaviour never pays for the search.

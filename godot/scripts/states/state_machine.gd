@@ -35,13 +35,13 @@ var current_state: State
 var global: State
 
 ## The unit this machine drives.
-var unit: SwarmUnit
+var unit: Drone
 
 
 func _ready() -> void:
-	unit = get_parent() as SwarmUnit
+	unit = get_parent() as Drone
 	if unit == null:
-		push_error("%s must be a child of a SwarmUnit." % name)
+		push_error("%s must be a child of a Drone." % name)
 		return
 
 	for child in get_children():

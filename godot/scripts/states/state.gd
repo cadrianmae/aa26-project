@@ -11,7 +11,7 @@ extends Node
 var machine: StateMachine
 
 ## The unit being driven. Convenience for machine.unit, which every state uses.
-var unit: SwarmUnit
+var unit: Drone
 
 
 ## Called once when this state becomes current. Set up behaviour weights here.

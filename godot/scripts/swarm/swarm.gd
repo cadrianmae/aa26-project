@@ -51,7 +51,7 @@ extends Node
 @export var draw_gizmos: bool = false
 
 ## Every living unit on this side.
-var units: Array[SwarmUnit] = []
+var units: Array[Drone] = []
 
 ## Hash key to the units currently binned in that cell. Rebuilt every frame.
 var _cells: Dictionary = {}
@@ -77,13 +77,13 @@ func _ready() -> void:
 
 ## Add a unit to this swarm. Called by the unit itself on ready, so units
 ## created at run time join without the swarm knowing they exist beforehand.
-func register(unit: SwarmUnit) -> void:
+func register(unit: Drone) -> void:
 	if not units.has(unit):
 		units.append(unit)
 
 
 ## Remove a unit, on death or despawn.
-func deregister(unit: SwarmUnit) -> void:
+func deregister(unit: Drone) -> void:
 	units.erase(unit)
 
 
@@ -132,8 +132,8 @@ func _rebuild_cells() -> void:
 ## bias, and scanning the centre cell first only mitigates it. Fixed here by
 ## collecting every candidate inside the radius, sorting by distance, and
 ## keeping the closest max_neighbours.
-func neighbours_of(unit: SwarmUnit) -> Array[SwarmUnit]:
-	var found: Array[SwarmUnit] = []
+func neighbours_of(unit: Drone) -> Array[Drone]:
+	var found: Array[Drone] = []
 	var candidates: Array = _candidates_for(unit)
 	var radius_squared: float = neighbour_distance * neighbour_distance
 
@@ -149,7 +149,7 @@ func neighbours_of(unit: SwarmUnit) -> Array[SwarmUnit]:
 	# Nearest-first, then truncate. This is the correction to DEFECT 2.
 	var origin: Vector3 = unit.global_position
 	found.sort_custom(
-		func(a: SwarmUnit, b: SwarmUnit) -> bool:
+		func(a: Drone, b: Drone) -> bool:
 			return (
 				a.global_position.distance_squared_to(origin)
 				< b.global_position.distance_squared_to(origin)
@@ -167,7 +167,7 @@ func neighbours_of(unit: SwarmUnit) -> Array[SwarmUnit]:
 ## exactly one, so the 27 keys are distinct and nothing is double-counted.
 ## Note 3x3x3 = 27 is the 3D figure; the familiar "own cell plus 8 neighbours"
 ## is the 2D form and is wrong here. Duggan, boid.gd:44-49.
-func _candidates_for(unit: SwarmUnit) -> Array:
+func _candidates_for(unit: Drone) -> Array:
 	if not partition:
 		return units
 

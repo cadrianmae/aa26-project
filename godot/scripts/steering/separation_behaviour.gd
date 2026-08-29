@@ -16,13 +16,13 @@ extends SteeringBehaviour
 
 func _ready() -> void:
 	super()
-	var unit: SwarmUnit = agent as SwarmUnit
+	var unit: Drone = agent as Drone
 	if unit != null:
 		unit.count_neighbours = true
 
 
 func calculate() -> Vector3:
-	var unit: SwarmUnit = agent as SwarmUnit
+	var unit: Drone = agent as Drone
 	if unit == null:
 		return Vector3.ZERO
 
@@ -42,7 +42,7 @@ func calculate() -> Vector3:
 
 
 func on_draw_gizmos() -> void:
-	var unit: SwarmUnit = agent as SwarmUnit
+	var unit: Drone = agent as Drone
 	if unit == null:
 		return
 	for other in unit.neighbours:

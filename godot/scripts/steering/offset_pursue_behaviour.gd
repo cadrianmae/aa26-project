@@ -34,7 +34,7 @@ func _ready() -> void:
 	# "commander_<allegiance>" group that [Ship] joins on ready -- this works
 	# identically whether the unit came from the scene file or was spawned.
 	if leader == null:
-		var unit: SwarmUnit = agent as SwarmUnit
+		var unit: Drone = agent as Drone
 		if unit != null:
 			leader = get_tree().get_first_node_in_group(
 				"commander_" + str(unit.allegiance)
