@@ -1,0 +1,88 @@
+## Runs one current state plus an always-on global state for a unit.
+##
+## Adapted from Duggan, miniature-rotary-phone/behaviors/state_machine.gd. The
+## two-tier shape is his: current_state._think() runs, then global_state
+## ._think(), every frame. The global tier is where swarm-wide intent lives, so
+## a unit can be told what the swarm wants while its own state still decides
+## what it actually does.
+##
+## DEFECT 4 in Duggan's state_machine.gd:14-31 -- his change_state() reparents
+## the new state onto the boid, but _ready() does NOT do the same for
+## initial_state. The first state therefore lives at a different place in the
+## tree from every state after it, so anything resolving relative node paths
+## behaves differently on the first state than on all the others. Fixed here by
+## not reparenting at all: states stay children of the machine for their whole
+## life, which is simpler and uniform.
+class_name StateMachine
+extends Node
+
+## Emitted after a transition, for gizmos and audio to react to.
+signal state_changed(from: State, to: State)
+
+## The state to start in. Must be a child of this machine.
+@export var initial_state: NodePath
+
+## Optional always-on state, run after the current one every frame.
+@export var global_state: NodePath
+
+## The state currently driving the unit.
+var current_state: State
+
+## The state run every frame regardless of the current one.
+var global: State
+
+## The unit this machine drives.
+var unit: SwarmUnit
+
+
+func _ready() -> void:
+	unit = get_parent() as SwarmUnit
+	if unit == null:
+		push_error("%s must be a child of a SwarmUnit." % name)
+		return
+
+	for child in get_children():
+		if child is State:
+			child.machine = self
+			child.unit = unit
+
+	if not initial_state.is_empty():
+		current_state = get_node(initial_state) as State
+		# Deferred because sibling behaviours may not have run _ready yet, and
+		# a state's _enter reaches into unit.behaviours.
+		if current_state != null:
+			current_state.call_deferred("_enter")
+
+	if not global_state.is_empty():
+		global = get_node(global_state) as State
+		if global != null:
+			global.call_deferred("_enter")
+
+
+func _process(_delta: float) -> void:
+	if current_state != null:
+		current_state._think()
+	if global != null:
+		global._think()
+
+
+## Leave the current state and enter [param new_state].
+##
+## Ignores a transition to the state already running, so a _think that fires
+## its condition every frame does not restart the state 60 times a second.
+func change_state(new_state: State) -> void:
+	if new_state == null or new_state == current_state:
+		return
+	var previous: State = current_state
+	if current_state != null:
+		current_state._exit()
+	current_state = new_state
+	current_state._enter()
+	state_changed.emit(previous, current_state)
+
+
+## Find a sibling state by node name. States transition by name rather than by
+## instantiating a new object, so each state exists exactly once per unit and
+## can hold its own data across visits.
+func state_named(state_name: String) -> State:
+	return get_node_or_null(NodePath(state_name)) as State
