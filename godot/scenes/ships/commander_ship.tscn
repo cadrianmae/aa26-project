@@ -1,7 +1,7 @@
 [gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/agents/ship.gd" id="1_orgs7"]
-[ext_resource type="Script" path="res://scripts/world/wireframe_hull.gd" id="2_rneqq"]
+[ext_resource type="Script" path="res://scripts/world/hull.gd" id="2_rneqq"]
 [ext_resource type="Script" path="res://scripts/steering/player_steering_behaviour.gd" id="3_st06i"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_3h2om"]
