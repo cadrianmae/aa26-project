@@ -51,6 +51,12 @@ signal died(unit: SwarmUnit)
 ## Draw the accumulated force and the velocity through DebugDraw3D.
 @export var draw_gizmos: bool = true
 
+@export_group("Flocking")
+
+## The swarm this unit belongs to. Assigned in the scene, or by the factory
+## when the unit is spawned at run time.
+@export var swarm: Swarm
+
 ## Behaviours found among this unit's children, in scene-tree order.
 ## That order IS priority order -- see [method calculate_force].
 var behaviours: Array[SteeringBehaviour] = []
@@ -58,9 +64,27 @@ var behaviours: Array[SteeringBehaviour] = []
 ## The force actually applied this tick, after smoothing.
 var force: Vector3 = Vector3.ZERO
 
+## Units near this one on the same side, refreshed once per frame. Shared by
+## every flocking behaviour so the search runs once rather than three times.
+var neighbours: Array[SwarmUnit] = []
+
+## Set true by any behaviour that needs neighbours. A unit with no flocking
+## behaviour never pays for the search.
+var count_neighbours: bool = false
+
 
 func _ready() -> void:
 	_collect_behaviours()
+	if swarm == null:
+		# The Godot editor can silently delete instance-override properties
+		# from the main scene, leaving units without a swarm reference.
+		# Phases 2+ also spawn units at run time with no scene reference.
+		# Fall back to a group lookup so we can find our swarm either way.
+		swarm = get_tree().get_first_node_in_group(
+			"swarm_" + str(allegiance)
+		) as Swarm
+	if swarm != null:
+		swarm.register(self)
 
 
 ## Cache the child behaviours once rather than walking the child list every
@@ -70,6 +94,11 @@ func _collect_behaviours() -> void:
 	for child in get_children():
 		if child is SteeringBehaviour:
 			behaviours.append(child)
+
+
+func _process(_delta: float) -> void:
+	if swarm != null and count_neighbours:
+		neighbours = swarm.neighbours_of(self)
 
 
 # --- Force accumulation (Mae's implementation) ----------------------------
@@ -170,5 +199,7 @@ func _face_direction_of_travel(acceleration: Vector3, delta: float) -> void:
 func take_damage(amount: float) -> void:
 	health -= amount
 	if health <= 0.0:
+		if swarm != null:
+			swarm.deregister(self)
 		died.emit(self)
 		queue_free()
