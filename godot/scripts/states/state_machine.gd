@@ -17,6 +17,9 @@ class_name StateMachine
 extends Node
 
 ## Emitted after a transition, for gizmos and audio to react to.
+##
+## Currently unconsumed -- no listener connects to it yet. A later phase wires
+## audio to this signal; it stays here so that phase has somewhere to connect.
 signal state_changed(from: State, to: State)
 
 ## The state to start in. Must be a child of this machine.
@@ -47,14 +50,18 @@ func _ready() -> void:
 			child.unit = unit
 
 	if not initial_state.is_empty():
-		current_state = get_node(initial_state) as State
+		current_state = get_node_or_null(initial_state) as State
+		if current_state == null:
+			push_error("%s: initial_state %s did not resolve to a State." % [name, initial_state])
 		# Deferred because sibling behaviours may not have run _ready yet, and
 		# a state's _enter reaches into unit.behaviours.
 		if current_state != null:
 			current_state.call_deferred("_enter")
 
 	if not global_state.is_empty():
-		global = get_node(global_state) as State
+		global = get_node_or_null(global_state) as State
+		if global == null:
+			push_error("%s: global_state %s did not resolve to a State." % [name, global_state])
 		if global != null:
 			global.call_deferred("_enter")
 
@@ -65,13 +72,21 @@ func _process(_delta: float) -> void:
 	if global != null:
 		global._think()
 
+	# Mirrors Duggan's own FSM readout (state_machine.gd:37) -- this is what
+	# makes the two-tier machine observable during a demo.
+	if unit != null:
+		DebugDraw2D.set_text("SM: " + unit.name, current_state.name if current_state else "-")
+
 
 ## Leave the current state and enter [param new_state].
 ##
 ## Ignores a transition to the state already running, so a _think that fires
 ## its condition every frame does not restart the state 60 times a second.
 func change_state(new_state: State) -> void:
-	if new_state == null or new_state == current_state:
+	if new_state == null:
+		push_error("%s: change_state() called with null for unit %s." % [name, unit])
+		return
+	if new_state == current_state:
 		return
 	var previous: State = current_state
 	if current_state != null:
