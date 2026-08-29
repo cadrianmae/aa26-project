@@ -25,9 +25,6 @@ const INTENT_STATES: Dictionary = {
 	Swarm.Intent.ENGAGE: "Engage",
 }
 
-func _enter() -> void:
-	pass
-
 func _think() -> void:
 	if unit == null or machine == null or unit.swarm == null:
 		return
