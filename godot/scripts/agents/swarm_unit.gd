@@ -101,7 +101,7 @@ func _process(_delta: float) -> void:
 		neighbours = swarm.neighbours_of(self)
 
 
-# --- Force accumulation (Mae's implementation) ----------------------------
+# --- Force accumulation ---------------------------------------------------
 
 ## Combine the child behaviours into one steering force using WTPRS:
 ## Weighted Truncated Running Sum with Prioritisation.
@@ -113,17 +113,18 @@ func _process(_delta: float) -> void:
 ##   Prioritisation  break out of the loop at that point, so behaviours later
 ##                   in the child order contribute nothing at all this tick
 ##
-## Steps:
-##   1. Start an accumulator at Vector3.ZERO.
-##   2. For each behaviour in `behaviours`, skip it unless `enabled`.
-##   3. Multiply `behaviour.calculate()` by `behaviour.weight`.
-##   4. Guard against NaN: a behaviour that divides by a zero-length vector
-##      poisons the sum permanently, since NaN plus anything is NaN. Zero the
-##      offending force instead.
-##   5. Add it to the accumulator.
-##   6. If the accumulator now exceeds `max_force`, clamp it with
-##      `limit_length(max_force)` and break.
-##   7. Return the accumulator.
+## The break is the part worth understanding. Priority is SCENE-TREE CHILD
+## ORDER -- there is no priority property anywhere -- so reordering the
+## behaviour nodes on a unit changes what it does. Flee sits first, which is
+## why the survival reflex is guaranteed its share of the force budget before
+## formation-keeping gets any.
+##
+## The [method @GlobalScope.is_finite] guard is not defensive padding. A
+## behaviour that divides by a zero-length vector returns NaN or infinity, and
+## NaN poisons a running sum permanently: every later comparison against
+## max_force returns false, so the truncation silently stops truncating and the
+## break never fires. Checking is_finite rather than is_nan also catches the
+## infinity that a near-zero divisor produces first.
 func calculate_force() -> Vector3:
 	var total_force: Vector3 = Vector3.ZERO
 	var weighted_force: Vector3 = Vector3.ZERO

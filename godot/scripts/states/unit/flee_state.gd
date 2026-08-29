@@ -16,26 +16,34 @@ extends State
 ## The state to return to once safe.
 @export var return_state_name: String = "Follow"
 
+var return_state: State = null
 
 func _enter() -> void:
+	return_state = machine.state_named(return_state_name)
 	use_only(["Flee", "Separation"])
 
 
-## Decide whether this unit is safe enough to stop fleeing.
+## Return to [member return_state_name] once the threat is far enough away.
 ##
-## Steps:
-##   1. Find the nearest threat with Threat.nearest_to(get_tree(),
-##      unit.global_position). It returns null when no threat exists.
-##   2. If there is no threat at all, the unit is safe: transition back.
-##   3. Otherwise measure the distance from the unit to that threat.
-##   4. The unit is safe once that distance exceeds the threat's own
-##      danger_radius PLUS safe_margin. The margin is the hysteresis: entering
-##      flee uses danger_radius alone, leaving it needs danger_radius plus the
-##      margin, so the two thresholds cannot chatter against each other.
-##   5. To transition, ask the machine for the state by name and change to it:
-##      machine.change_state(machine.state_named(return_state_name))
-##      change_state ignores a transition to the state already running, so
-##      calling it repeatedly is harmless.
+## Two separate reasons count as safe: the threat is gone entirely, or it is
+## still there but out of reach. They share a body today, but they are
+## different questions and a later phase may want to answer them differently.
+##
+## The threshold is deliberately NOT the same one that triggered the flee.
+## [SwarmIntentState] enters this state at the threat's bare danger_radius;
+## leaving needs that radius plus [member safe_margin]. Without the gap, a unit
+## sitting exactly on the boundary satisfies both conditions on alternating
+## frames and shudders in place instead of fleeing or returning.
 func _think() -> void:
-	# TODO(human): implement the safe-to-return check per the steps above.
-	pass
+	var unit_position: Vector3 = unit.global_position
+	var threat: Threat = Threat.nearest_to(get_tree(), unit_position)
+
+	if threat == null:
+		machine.change_state(return_state)
+		return
+
+	var distance_to_threat: float = unit_position.distance_to(threat.global_position)
+
+	if distance_to_threat > threat.danger_radius + safe_margin:
+		machine.change_state(return_state)
+		return

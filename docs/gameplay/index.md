@@ -26,7 +26,8 @@ that does not exist.
 
 ## Build status
 
-Honest status as of the start of Phase 2.
+Honest status with Phase 2 complete: the swarm flocks, holds formation,
+scatters from a threat and re-forms when it passes.
 
 | System | Status |
 |---|---|
@@ -39,12 +40,25 @@ Honest status as of the start of Phase 2.
 | Offset-pursue formation | Built |
 | Debug gizmos on every behaviour | Built |
 | Phase-based music director | Built, placeholder tracks |
-| Spatial hash, flocking | Phase 2 |
-| Unit state machine, flee reflex | Phase 2 |
-| Unit health and death | Phase 2 |
-| Asteroids, harvesting, the economy | Phase 3 |
-| Enemy commander AI | Phase 4 |
+| Spatial hash, nearest-first neighbour queries | Built |
+| Flocking: separation, alignment, cohesion | Built |
+| Two-tier state machine, nine unit states | Built |
+| Flee reflex, reachable from every state | Built |
+| Thargon health and death | Built, nothing triggers it yet |
+| Barnacles, harvesting, Meta-Alloys | Phase 3 |
+| Swarm intent broadcasting and hotkeys | Phase 3 |
+| Swarm factory, Interceptor tiers | Phase 3 |
+| Rival hive commander AI | Phase 4 |
 | Weapons, combat | Phase 4 |
+
+Six of the nine unit states are honest stubs that hold formation: `Launch`,
+`Harvest`, `Deposit`, `Engage`, `Patrol` and `Detonate`. Each is a placeholder
+whose real behaviour arrives in the phase named above. `Follow` and `Flee` are
+implemented, which is what the flocking and the reflex need.
+
+`Thargon health and death` is built and wired — `take_damage()` deregisters
+from the swarm, emits, and frees — but nothing calls it yet. Barnacle
+harvesting and combat are what will.
 
 ---
 

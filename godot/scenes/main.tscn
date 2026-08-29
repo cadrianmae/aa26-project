@@ -13,8 +13,8 @@
 [ext_resource type="AudioStream" uid="uid://cetkjnuhp8hjn" path="res://assets/audio/night_on_the_bare_mountain.ogg" id="15_defeat"]
 [ext_resource type="Script" uid="uid://btscccuxxpxil" path="res://scripts/world/starfield.gd" id="16_starfield"]
 [ext_resource type="Script" uid="uid://7honk5i5a3xo" path="res://scripts/world/dust_field.gd" id="17_dustfield"]
-[ext_resource type="Script" path="res://scripts/swarm/swarm.gd" id="18_pswarm"]
-[ext_resource type="Script" path="res://scripts/world/threat.gd" id="19_threat"]
+[ext_resource type="Script" uid="uid://cdfg3bufo2w7h" path="res://scripts/swarm/swarm.gd" id="18_pswarm"]
+[ext_resource type="Script" uid="uid://blfimmr306kxa" path="res://scripts/world/threat.gd" id="19_threat"]
 
 [sub_resource type="Environment" id="Environment_a8y0u"]
 background_mode = 1
@@ -27,12 +27,8 @@ environment = SubResource("Environment_a8y0u")
 
 [node name="CommanderShip" parent="." unique_id=900213608 instance=ExtResource("1_o6xl0")]
 
-[node name="PlayerSwarm" type="Node" parent="."]
+[node name="PlayerSwarm" type="Node" parent="." unique_id=667554090]
 script = ExtResource("18_pswarm")
-allegiance = 0
-neighbour_distance = 20.0
-cell_size = 20.0
-max_neighbours = 10
 draw_gizmos = true
 
 [node name="Units" type="Node3D" parent="." unique_id=1100179967]
@@ -74,7 +70,6 @@ camera = NodePath("../Camera3D")
 script = ExtResource("17_dustfield")
 camera = NodePath("../Camera3D")
 
-[node name="Threat" type="Node3D" parent="."]
+[node name="Threat" type="Node3D" parent="." unique_id=1665094084]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -40)
 script = ExtResource("19_threat")
-danger_radius = 18.0
