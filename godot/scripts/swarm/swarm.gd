@@ -1,7 +1,7 @@
 ## A faction's swarm: the spatial index that answers "who is near this unit".
 ##
 ## Adapted from Duggan, miniature-rotary-phone/behaviors/school.gd:29-58, with
-## three corrections documented at their sites. Unlike his School this does NOT
+## two corrections documented at their sites. Unlike his School this does NOT
 ## spawn its units: Phase 3's factory owns spawning, and units register
 ## themselves on ready. Separating "who creates units" from "who indexes them"
 ## is what lets a unit spawned at run time join the flock with no special case.
@@ -47,7 +47,7 @@ extends Node
 
 @export_group("Debug")
 
-## Draw the occupied cells and each unit's perception radius.
+## Draw each unit's perception radius.
 @export var draw_gizmos: bool = false
 
 ## Every living unit on this side.
@@ -96,10 +96,13 @@ func _process(_delta: float) -> void:
 
 ## Hash a world position to a single integer cell key.
 ##
-## The +10000 shift kills negative coordinates before flooring. Without it
-## floor(-0.5) is -1 and floor(0.5) is 0, so positions either side of an axis
-## collapse onto neighbouring keys and the grid corrupts near the origin.
-## Duggan, school.gd:29-34.
+## The key formula x + y*grid_size + z*grid_size*grid_size is a positional
+## encoding, which only works when every digit is non-negative. With negative
+## components, distinct cells ALIAS onto the same key: (x=-1, y=1, z=0) gives
+## -1 + 10000 = 9999, and (x=9999, y=0, z=0) also gives 9999 -- two different
+## cells, one key, so units in one would be treated as neighbours of units in
+## the other. The +10000 shift makes every coordinate non-negative before
+## encoding, which removes the possibility. Duggan, school.gd:29-34.
 func position_to_cell(p: Vector3) -> int:
 	var shifted: Vector3 = p + Vector3(10000.0, 10000.0, 10000.0)
 	var x: int = int(floor(shifted.x / cell_size))

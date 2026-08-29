@@ -53,7 +53,7 @@
 - Consumes: `SwarmUnit` (class exists, has `allegiance: int`, `global_position`).
 - Produces: `Swarm extends Node` with `@export var neighbour_distance: float`, `@export var max_neighbours: int`, `@export var cell_size: float`, `@export var partition: bool`, `@export var draw_gizmos: bool`; methods `register(unit: SwarmUnit) -> void`, `deregister(unit: SwarmUnit) -> void`, `neighbours_of(unit: SwarmUnit) -> Array[SwarmUnit]`, `position_to_cell(p: Vector3) -> int`.
 
-This is the task that fixes three defects in Duggan's `school.gd`. Each fix carries a comment naming the defect, because the assignment's Complexity band rewards demonstrated understanding over transcription.
+This is the task that fixes two defects in Duggan's `school.gd`. Each fix carries a comment naming the defect, because the assignment's Complexity band rewards demonstrated understanding over transcription.
 
 - [ ] **Step 1: Write the file**
 
@@ -63,7 +63,7 @@ Create `godot/scripts/swarm/swarm.gd`:
 ## A faction's swarm: the spatial index that answers "who is near this unit".
 ##
 ## Adapted from Duggan, miniature-rotary-phone/behaviors/school.gd:29-58, with
-## three corrections documented at their sites. Unlike his School this does NOT
+## two corrections documented at their sites. Unlike his School this does NOT
 ## spawn its units: Phase 3's factory owns spawning, and units register
 ## themselves on ready. Separating "who creates units" from "who indexes them"
 ## is what lets a unit spawned at run time join the flock with no special case.
@@ -258,7 +258,7 @@ Expected: empty.
 
 ```bash
 git add godot/scripts/swarm/swarm.gd
-git commit -m "feat(swarm): add spatial hash with three corrections to Duggan's School"
+git commit -m "feat(swarm): add spatial hash correcting two defects in Duggan's School"
 ```
 
 ---
