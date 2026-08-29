@@ -9,16 +9,16 @@
 This is the central design commitment, and everything else follows from it.
 
 There is no roster. No object holds a list called "the swarm". A swarm is
-simply *whichever Thargons are currently near each other and on the same
+simply *whichever Drones are currently near each other and on the same
 side*.
 
-Each Thargon (`SwarmUnit` in code) asks a spatial index, every frame, "who is
-near me, on my side?" and steers according to what it finds. From that one
+Each Thargoid Drone (`Drone` in code) asks a spatial index, every frame, "who
+is near me, on my side?" and steers according to what it finds. From that one
 question, four behaviours fall out for free:
 
-- **Join** — a newly grown Thargon flies toward the group and starts seeing
+- **Join** — a newly grown Drone flies toward the group and starts seeing
   neighbours
-- **Leave** — a Thargon dies; its neighbours re-query next frame and re-cohere
+- **Leave** — a Drone dies; its neighbours re-query next frame and re-cohere
 - **Split** — a group pulled in two directions separates naturally
 - **Merge** — two groups drifting together start seeing each other
 
@@ -43,12 +43,12 @@ and this is the structural reason it does.
 
 ## Finding neighbours cheaply
 
-The naive way to answer "who is near me" is for every Thargon to check every
-other Thargon. That is O(n squared): at 100 units it is 9,900 distance checks
+The naive way to answer "who is near me" is for every Drone to check every
+other Drone. That is O(n squared): at 100 units it is 9,900 distance checks
 per frame, at 1,000 units it is 999,000.
 
 Instead the swarm keeps a **uniform spatial hash**. The world is divided into
-cubic cells, every Thargon is binned into a cell once per frame, and a Thargon
+cubic cells, every Drone is binned into a cell once per frame, and a Drone
 asking for neighbours only tests the units in its own cell and the 26 around
 it — 27 cells in total.
 
@@ -65,15 +65,15 @@ correction is documented at its site in the code:
    stopping early keeps whichever units the iteration reached first, not the
    nearest ones. Fixed by collecting all candidates, sorting by distance, then
    truncating.
-3. **Alignment latching its last force.** A Thargon that loses all its
+3. **Alignment latching its last force.** A Drone that loses all its
    neighbours kept applying its previous alignment force forever. Fixed by
    contributing nothing when there are no neighbours.
 
 ---
 
-## How a Thargon decides where to go
+## How a Drone decides where to go
 
-Each Thargon runs several steering behaviours at once and combines them into
+Each Drone runs several steering behaviours at once and combines them into
 one force. The combination is **WTPRS**: Weighted Truncated Running Sum with
 Prioritisation.
 
@@ -112,7 +112,7 @@ writing the last paragraph in your own words.]
 | Separation | Get away from close neighbours | Inverse-distance falloff, so near neighbours dominate. Magnitude kept. |
 | Alignment | Match neighbours' average heading | Averages headings, not velocities, so it is speed-independent |
 | Cohesion | Move toward the neighbours' centre | Normalised to unit length, so distance sets direction only |
-| Offset pursue | Hold a slot relative to the Interceptor | Slot is captured from where the Thargon starts, not authored |
+| Offset pursue | Hold a slot relative to the Matriarch | Slot is captured from where the Drone starts, not authored |
 | Flee | Get away from a threat | Range-gated, so a distant threat costs nothing |
 
 Separation keeps its magnitude and cohesion discards its own. That asymmetry is

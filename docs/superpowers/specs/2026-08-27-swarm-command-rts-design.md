@@ -16,8 +16,8 @@ Four things are new:
 
 | Was | Now |
 |---|---|
-| Free 3D space combat | **2.5D top-down RTS.** Movement locked to the XZ plane, perspective camera tilted about 60 degrees, following the player Interceptor |
-| Deploy on a cooldown | **Harvest and spend.** Thargons harvest Thargoid Barnacles growing on asteroids for Meta-Alloys; a swarm factory grows batches of 5-15 and upgrades five times |
+| Free 3D space combat | **2.5D top-down RTS.** Movement locked to the XZ plane, perspective camera tilted about 60 degrees, following the player Matriarch |
+| Deploy on a cooldown | **Harvest and spend.** Drones harvest Thargoid Barnacles growing on asteroids for Meta-Alloys; a swarm factory grows batches of 5-15 and upgrades five times |
 | Two intents (FOLLOW / ATTACK) | **Five intents:** HARVEST, FOLLOW (defence), ATTACK, RECALL, PATROL |
 | Untextured low-poly | **Flat-shaded solid polygon rendering**, in the style of Frontier / Elite II (1993). Custom shader, per-faction colour. Original wireframe rendering (Elite, 1984) retained behind a `render_style` toggle on `Hull` |
 
@@ -34,43 +34,44 @@ the Barnacle sites they seeded themselves one to two million years ago, so a
 second hive contesting the same seeded asteroid belt is close to canon rather
 than an invented premise.
 
-The player pilots a Thargoid Interceptor and commands a swarm of Thargons. The
-enemy is a mirror: another Interceptor, another swarm, driven by
+The player pilots a Thargoid Matriarch and commands a swarm of Thargoid
+Drones. The enemy is a mirror: another Matriarch, another swarm, driven by
 `CommanderAI`.
 
-**Win condition:** destroy the enemy Interceptor. Losing your own ends the
+**Win condition:** destroy the enemy Matriarch. Losing your own ends the
 match.
 
 **Core loop:**
 
-1. **Harvest** — Thargons work Thargoid Barnacles growing on asteroids,
+1. **Harvest** — Drones work Thargoid Barnacles growing on asteroids,
    drawing off the Meta-Alloys the Barnacle extracts and converts from the
-   rock. The Barnacle corrodes the Thargon while it works, so harvesting has
+   rock. The Barnacle corrodes the Drone while it works, so harvesting has
    a running health cost and the flee reflex fires during economy, not only
    during combat.
-2. **Spend** — the swarm factory, a module on your Interceptor, slowly grows
-   new Thargons in batches of 5-15. Upgradeable five times.
+2. **Spend** — the swarm factory, a module on your Matriarch, slowly grows
+   new Drones in batches of 5-15. Upgradeable five times.
 3. **Command** — hotkeys broadcast intent to the swarm. Right-click or a
    reticle designates a target.
 4. **Fight** — you fly and fire your own weapon while the swarm engages,
    flinches, scatters and re-coheres around you.
 
-**Strategic tension:** every Thargon harvesting is a Thargon not screening
+**Strategic tension:** every Drone harvesting is a Drone not screening
 you. One resource pool, no build menu. The only decision is where the
 creatures point.
 
 **The lifeform read** is unchanged and load-bearing for the brief: the swarm is
-**emergent, not owned**. Thargons are the first-class autonomous agents; "a
-swarm" is whichever Thargons are currently near each other on the same side.
+**emergent, not owned**. Drones are the first-class autonomous agents; "a
+swarm" is whichever Drones are currently near each other on the same side.
 Join, leave, split and merge all fall out of per-unit rules. Aliveness comes
 from flocking, the flee reflex, and re-cohering after losses — not from a
 face.
 
-**Deliberate deviation from canon:** in Elite Dangerous, Thargons are pure
-combat drones controlled by the parent ship's hive mind, going inert without
-it. This project's Thargons harvest as well as fight — a conscious gameplay
-change, not an oversight, made so one unit type can carry both the economy and
-the combat.
+**Deliberate deviation from canon:** in Elite Dangerous, the canon Thargoid
+combat drone is single-purpose, tied to its parent Interceptor's hive mind,
+going inert without it. This project's Drones are multi-purpose: they harvest
+as well as fight, and they carry enough autonomy to override orders for
+self-preservation — a conscious gameplay change, not an oversight, made so one
+unit type can carry both the economy and the combat.
 
 ## 3. Class architecture
 
@@ -80,12 +81,12 @@ via an `allegiance` flag.
 | Class | Extends | Responsibility | Grounding |
 |---|---|---|---|
 | `SteeringBehaviour` | `Node` | Base: `weight`, `enabled`, `on_draw_gizmos()`, `calculate()` | `MRP/steering_behavior.gd` |
-| `SwarmUnit` | `CharacterBody3D` | A Thargon. WTPRS accumulation, Euler integration, banking, `allegiance`, `flock_id`, health, carried Meta-Alloys | `MRP/boid.gd:141-158`, `:172-197` |
-| `Swarm` | `School` | Spawns Thargons, owns the spatial hash and neighbour caps, one per hive | `MRP/school.gd` |
+| `Drone` | `CharacterBody3D` | A Thargoid Drone. WTPRS accumulation, Euler integration, banking, `allegiance`, `flock_id`, health, carried Meta-Alloys | `MRP/boid.gd:141-158`, `:172-197` |
+| `Swarm` | `School` | Spawns Drones, owns the spatial hash and neighbour caps, one per hive | `MRP/school.gd` |
 | `SwarmCoordinator` | `Node` | Broadcasts intent, holds the Meta-Alloy pool, receives deposits. Owns no roster | new |
 | `SwarmFactory` | `Node` | Grows batches of 5-15, spends Meta-Alloys, holds upgrade level 1-5. Child of the ship | new |
-| `Ship` | `CharacterBody3D` | A Thargoid Interceptor. Planar flight, weapon, health, hosts the factory. Same class both sides | `MRP/player_steering.gd`, `fire_at_target_global_state.gd` |
-| `Asteroid` | `StaticBody3D` | Hosts a Thargoid Barnacle. Finite yield per harvest pass, regrows slowly, corrodes Thargons harvesting on it | new |
+| `Ship` | `CharacterBody3D` | A Thargoid Matriarch — a mobile hive that grows Drones and commands the swarm. Planar flight, weapon, health, hosts the factory. Same class both sides | `MRP/player_steering.gd`, `fire_at_target_global_state.gd` |
+| `Asteroid` | `StaticBody3D` | Hosts a Thargoid Barnacle. Finite yield per harvest pass, regrows slowly, corrodes Drones harvesting on it | new |
 | `PlayerController` | `Node` | Input to `move()` / `fire()` / `set_intent()` / `designate()` | `MRP/player_steering.gd` |
 | `CommanderAI` | `StateMachine` | Rival hive's brain: expand / press / retreat, same interface as `PlayerController` | `MRP/state_machine.gd` |
 
@@ -113,12 +114,12 @@ SOLID applied rather than recited.
 Duggan's `StateMachine` already provides both tiers: `current_state._think()`
 runs, then `global_state._think()`, every frame
 (`MRP/state_machine.gd:39-42`). Swarm intent rides as the **global state**;
-the Thargon's own situation drives the **current state**. A Thargon may
+the Drone's own situation drives the **current state**. A Drone may
 override intent for survival, and that override is the aliveness beat — in
 fiction, the species' "overdeveloped survival instincts" showing up at unit
 scale.
 
-**Tier 1, swarm intent** (broadcast by `SwarmCoordinator`, Thargons listen):
+**Tier 1, swarm intent** (broadcast by `SwarmCoordinator`, Drones listen):
 `HARVEST` / `FOLLOW` / `ATTACK` / `RECALL` / `PATROL`.
 
 **Tier 2, per-unit state.** Each state is a recipe of composed steering
@@ -126,17 +127,17 @@ forces — no new movement code per state, only re-weighting.
 
 | State | Entered when | Steering recipe | Exits to |
 |---|---|---|---|
-| `LAUNCH` | freshly grown by the factory | `seek` toward the Interceptor | `FOLLOW` on arrival |
+| `LAUNCH` | freshly grown by the factory | `seek` toward the Matriarch | `FOLLOW` on arrival |
 | `FOLLOW` | intent FOLLOW, safe | `separation + alignment + cohesion` + `offset_pursue` at a formation slot | `HARVEST` / `ENGAGE` / `PATROL` / `FLEE` |
 | `HARVEST` | intent HARVEST, Barnacle in range | `arrive` at the Barnacle, then draw off Meta-Alloys while taking corrosion damage | `DEPOSIT` when full, `FLEE` on low health |
-| `DEPOSIT` | carrying Meta-Alloys | `arrive` at the Interceptor, transfer to the pool | `HARVEST` / `FOLLOW` |
+| `DEPOSIT` | carrying Meta-Alloys | `arrive` at the Matriarch, transfer to the pool | `HARVEST` / `FOLLOW` |
 | `ENGAGE` | intent ATTACK, target designated | `pursue` (lead the target) + `separation` | `DETONATE` / `FLEE` |
 | `PATROL` | intent PATROL, point designated | `follow_path` around the point + flocking triple | `ENGAGE` / `FLEE` |
 | `FLEE` | threat or fire in danger radius; reflex, overrides intent | `flee` from the threat + `separation` | back to the intent's state when safe |
 | `DETONATE` | within strike distance | none — trigger blast, remove the unit | terminal |
 
 `FLEE` is a reflex edge from any state. `DETONATE` and death remove the
-Thargon; neighbours re-query the grid and re-cohere the next frame.
+Drone; neighbours re-query the grid and re-cohere the next frame.
 
 **Course mapping:** W2 seek/arrive, W3 path following and player steering,
 W5 SOLID and WTPRS, W6 pursue and offset pursue, W7-10 wander/avoidance/FSM,
@@ -154,7 +155,7 @@ aa26-project/
     ├── project.godot
     ├── addons/debug_draw_3d/
     ├── scripts/
-    │   ├── agents/          swarm_unit.gd, ship.gd
+    │   ├── agents/          drone.gd, ship.gd
     │   ├── steering/        steering_behaviour.gd + one file per behaviour
     │   ├── states/
     │   │   ├── unit/        launch, follow, harvest, deposit, engage, patrol, flee
@@ -201,7 +202,7 @@ gets marked.
 
 | Phase | Branch | Done when | Day |
 |---|---|---|---|
-| 0+1 — Barebones build | `feat/vertical-slice` | Folder tree, addons, input map, wireframe shader, tilted follow camera. Ship flies on XZ. `SwarmUnit` with WTPRS and integration. Five units hold formation via offset pursue. Runs and is playable | Thu 27 |
+| 0+1 — Barebones build | `feat/vertical-slice` | Folder tree, addons, input map, wireframe shader, tilted follow camera. Ship flies on XZ. `Drone` with WTPRS and integration. Five units hold formation via offset pursue. Runs and is playable | Thu 27 |
 | 2 — Swarm proper | `feat/flocking`, `feat/unit-fsm` | Spatial hash, flocking triple, per-unit FSM, FLEE reflex, unit health and death | Sat 29 |
 | 3 — Economy | `feat/harvest-economy`, `feat/factory` | Thargoid Barnacles on asteroids, HARVEST and DEPOSIT, Meta-Alloy pool, factory batches and upgrades | Mon 31 |
 | 4 — Enemy and Groovy | `feat/commander-ai`, `feat/vfx`, `feat/readme` | Mirror `CommanderAI` (rival hive), win and lose conditions, then trails, sound, PC build, README, YouTube video | Tue 1 |
@@ -277,7 +278,7 @@ Deliberately flexible; the class boundaries absorb changes here.
 - Reynolds, C. W. — Boids: <https://www.red3d.com/cwr/boids/>
 - Duggan, B. — `skooter500/miniature-rotary-phone`, `behaviors/`
 - Duggan, B. — `skooter500/UnitySteeringBehaviours`, source of the WTPRS name
-- *Elite Dangerous* Fandom wiki — Thargoid, Thargon, Thargoid Interceptor,
+- *Elite Dangerous* Fandom wiki — Thargoid, Thargoid Interceptor,
   Meta-Alloys, Thargoid Barnacle. See
   [`../../gameplay/06-references.md`](../../gameplay/06-references.md) for
   full URLs. *Elite Dangerous* and the Thargoids are the intellectual

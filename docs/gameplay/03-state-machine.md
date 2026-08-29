@@ -6,16 +6,16 @@
 
 ## Two tiers at once
 
-A Thargon's behaviour is decided at two levels simultaneously.
+A Thargoid Drone's behaviour is decided at two levels simultaneously.
 
 **Tier 1, swarm intent.** What the swarm has been told to do. Runs every frame
-regardless of what the Thargon is personally doing.
+regardless of what the Drone is personally doing.
 
-**Tier 2, the Thargon's own state.** What this particular Thargon is actually
+**Tier 2, the Drone's own state.** What this particular Drone is actually
 doing right now.
 
 Each state is a *recipe of steering weights*, not new movement code. Entering a
-state enables some behaviours and disables others. Nothing about how a Thargon
+state enables some behaviours and disables others. Nothing about how a Drone
 moves changes between states — only what it is currently paying attention to.
 
 That is why adding a state is cheap: it is a list of behaviour names, not an
@@ -69,10 +69,10 @@ diagram's actual content: the tidy chain down the middle is what the swarm is
 
 | State | Entered when | Steering recipe |
 |---|---|---|
-| `LAUNCH` | Freshly grown by the factory | Seek toward the Interceptor |
+| `LAUNCH` | Freshly grown by the factory | Seek toward the Matriarch |
 | `FOLLOW` | Default; intent is FOLLOW and it is safe | Flocking triple plus offset pursue |
 | `HARVEST` | Intent is HARVEST, Barnacle in range | Arrive at the Barnacle, drain Meta-Alloys |
-| `DEPOSIT` | Carrying Meta-Alloys | Arrive at the Interceptor, transfer |
+| `DEPOSIT` | Carrying Meta-Alloys | Arrive at the Matriarch, transfer |
 | `ENGAGE` | Intent is ATTACK, target designated | Pursue with lead, plus separation |
 | `PATROL` | Intent is PATROL, point designated | Follow a path around the point |
 | `FLEE` | Threat in danger radius — from any state | Flee the threat, plus separation |
@@ -82,7 +82,7 @@ diagram's actual content: the tidy chain down the middle is what the swarm is
 
 ## The flee reflex
 
-FLEE is reachable from every state. A Thargon that sees a threat inside its
+FLEE is reachable from every state. A Drone that sees a threat inside its
 danger radius abandons whatever it was told to do and scatters.
 
 This is the single most important behaviour in the game for the brief, and it
@@ -90,7 +90,7 @@ is also the one most grounded in canon rather than invented for the mechanic.
 Thargoids evolved on harsh ammonia worlds and are described as having
 "overdeveloped survival instincts" — the trait that kept the species alive
 across a couple of million years is exactly a willingness to break off and
-survive rather than hold a line. A Thargon abandoning its orders to flee is
+survive rather than hold a line. A Drone abandoning its orders to flee is
 the species trait showing up at the unit level, not a coded-in cowardice.
 
 An agent that always obeys reads as a puppet. An agent that *disobeys in order
@@ -111,11 +111,11 @@ reflex exists, and adding a ninth state gets it for free.
 
 ### Hysteresis
 
-Returning from FLEE is deliberately asymmetric. A Thargon enters FLEE at the
+Returning from FLEE is deliberately asymmetric. A Drone enters FLEE at the
 threat's danger radius, but will not leave until it is that radius *plus a
 margin* away.
 
-Without that gap, a Thargon sitting exactly on the boundary satisfies both the
+Without that gap, a Drone sitting exactly on the boundary satisfies both the
 entry and exit conditions on alternating frames and vibrates in place. The
 margin is not polish; it is what makes the state stable at all.
 
@@ -123,9 +123,9 @@ margin is not polish; it is what makes the state stable at all.
 
 ## Intent is a suggestion
 
-The swarm is told what to do. Each Thargon decides whether to comply.
+The swarm is told what to do. Each Drone decides whether to comply.
 
-In practice, that means intent biases which Tier-2 state a Thargon prefers,
-and the Thargon overrides it whenever its own survival is at stake. The player
+In practice, that means intent biases which Tier-2 state a Drone prefers,
+and the Drone overrides it whenever its own survival is at stake. The player
 is commanding a creature, not driving a vehicle — and the difference is
 legible precisely at the moment the swarm ignores an order to save itself.

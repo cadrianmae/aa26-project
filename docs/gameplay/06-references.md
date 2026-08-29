@@ -28,9 +28,8 @@
 
 - *Elite Dangerous* Fandom wiki — Thargoid:
   <https://elite-dangerous.fandom.com/wiki/Thargoid>
-- *Elite Dangerous* Fandom wiki — Thargon:
-  <https://elite-dangerous.fandom.com/wiki/Thargon>
-- *Elite Dangerous* Fandom wiki — Thargoid Interceptor:
+- *Elite Dangerous* Fandom wiki — Thargoid Interceptor (canon precedent for
+  this project's Matriarch, and for the Drones' combat-drone origins):
   <https://elite-dangerous.fandom.com/wiki/Thargoid_Interceptor>
 - *Elite Dangerous* Fandom wiki — Meta-Alloys:
   <https://elite-dangerous.fandom.com/wiki/Meta-Alloys>

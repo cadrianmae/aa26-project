@@ -19,14 +19,14 @@ to nothing.
 ```mermaid
 flowchart LR
     AST["Thargoid Barnacle<br/><small>grows on an asteroid,<br/>regrows slowly</small>"]
-    HARVEST["Thargon in HARVEST"]
-    DEP["Thargon in DEPOSIT"]
-    POOL[("Meta-Alloy pool<br/><small>on the Interceptor</small>")]
+    HARVEST["Drone in HARVEST"]
+    DEP["Drone in DEPOSIT"]
+    POOL[("Meta-Alloy pool<br/><small>on the Matriarch</small>")]
     FAC["Swarm factory<br/><small>upgradeable x5</small>"]
-    NEW["New Thargons<br/><small>batch of 5 to 15</small>"]
-    LOST["Thargon destroyed"]
+    NEW["New Drones<br/><small>batch of 5 to 15</small>"]
+    LOST["Drone destroyed"]
 
-    AST -->|"yields Meta-Alloys,<br/>corrodes the Thargon"| HARVEST
+    AST -->|"yields Meta-Alloys,<br/>corrodes the Drone"| HARVEST
     HARVEST -->|"carrying full"| DEP
     DEP -->|"transfers Meta-Alloys"| POOL
     POOL -->|"spends"| FAC
@@ -42,19 +42,19 @@ flowchart LR
     class POOL store
 ```
 
-The dashed arrows are the point. The loop is **lossy**: a Thargon can die at
-the Barnacle or on the way home, so Meta-Alloy-per-Thargon is not guaranteed
+The dashed arrows are the point. The loop is **lossy**: a Drone can die at
+the Barnacle or on the way home, so Meta-Alloy-per-Drone is not guaranteed
 to be positive. That is what stops "send everyone to harvest" from being
 trivially correct.
 
-1. A Thargon in `HARVEST` arrives at a Barnacle and draws off the Meta-Alloys
+1. A Drone in `HARVEST` arrives at a Barnacle and draws off the Meta-Alloys
    it has extracted from the asteroid.
-2. The Barnacle corrodes the Thargon the whole time it works.
-3. When full, the Thargon enters `DEPOSIT` and carries the Meta-Alloys back to
-   the Interceptor.
-4. The Interceptor adds them to the hive's single Meta-Alloy pool.
+2. The Barnacle corrodes the Drone the whole time it works.
+3. When full, the Drone enters `DEPOSIT` and carries the Meta-Alloys back to
+   the Matriarch.
+4. The Matriarch adds them to the hive's single Meta-Alloy pool.
 5. The factory spends from that pool to grow a batch of five to fifteen
-   Thargons.
+   Drones.
 
 ---
 
@@ -63,22 +63,22 @@ trivially correct.
 Making harvesting *dangerous* rather than merely *slow* does three things:
 
 **It makes the economy a decision.** A slow economy is just a timer. An
-economy that costs you Thargons means every harvesting run is a wager.
+economy that costs you Drones means every harvesting run is a wager.
 
-**It fires the flee reflex during peacetime.** A Thargon whose health drops
+**It fires the flee reflex during peacetime.** A Drone whose health drops
 while harvesting will break off and scatter. That means the swarm reads as
 alive even when nothing is attacking you — which matters, because the demo
 video will spend most of its length not in combat.
 
-**It makes Meta-Alloys-per-Thargon uncertain.** A Thargon can die before
+**It makes Meta-Alloys-per-Drone uncertain.** A Drone can die before
 depositing, so the loop is lossy. That is what stops "send everyone to
 harvest" being the obviously correct move.
 
 ---
 
-## Why the factory is on the Interceptor
+## Why the factory is on the Matriarch
 
-The factory is a module on the Interceptor, not a static base.
+The factory is a module on the Matriarch, not a static base.
 
 Thargoids are nomadic: canon describes them as existing entirely in space or
 within fabricated hives, never in a settlement they leave behind. A
@@ -86,7 +86,7 @@ ship-mounted factory follows from that directly, rather than being invented to
 dodge base-building scope.
 
 You carry your own production with you. There is no base to defend, no second
-thing to lose, and no build order. Killing the Interceptor ends the match, and
+thing to lose, and no build order. Killing the Matriarch ends the match, and
 that is the only way to end it — see [the opposition](05-opposition.md).
 
 The alternative, a fixed structure, would add territory pressure and a second
@@ -97,16 +97,19 @@ win condition. It was rejected as scope: one deadline, one thing to protect.
 ## Upgrades
 
 The factory upgrades five times. Each level increases batch size, growth rate,
-or both.
+or both — upgrading is the Matriarch becoming a bigger hive, not just a bigger
+batch size with no fictional weight behind it.
 
-The five levels are not an arbitrary number: canon's Interceptor line scales
-in exactly five named steps by Thargon capacity — Cyclops (32), Basilisk (64),
-Medusa (96), Hydra (128), then Orthrus. Upgrading the factory is framed as the
-hive's Interceptor becoming a heavier hull in that line, not just "a bigger
-batch size" with no fictional weight behind it.
+The five levels are not an arbitrary number, but they are not a name copied
+from canon either. Canon establishes that Thargoid vessels come in tiers of
+increasing brood capacity — the Interceptor line scales in exactly five named
+steps by drone capacity: Cyclops (32), Basilisk (64), Medusa (96), Hydra
+(128), then Orthrus. That is precedent for the *pattern*, not a classification
+the Matriarch belongs to: a Matriarch is not an Interceptor and has no
+Interceptor variants. It follows the same escalating pattern with five growth
+stages of its own.
 
-[DRAFT — Mae: unspecified on purpose. Worth deciding whether upgrades cost
-Meta-Alloys (competing with Thargon production, so it is a real trade) or
-arrive on a timer (simpler, but then it is not a decision). The first is more
-interesting and costs nothing extra to implement, since the Meta-Alloy pool
-already exists.]
+[DRAFT — Mae: the five growth stages are deliberately left unnamed here.
+Naming them is your call, not a design decision to hand off — but five names,
+escalating in the same spirit as the Interceptor line above, would read well
+in the README.]

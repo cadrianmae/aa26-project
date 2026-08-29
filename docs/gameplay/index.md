@@ -44,10 +44,10 @@ scatters from a threat and re-forms when it passes.
 | Flocking: separation, alignment, cohesion | Built |
 | Two-tier state machine, nine unit states | Built |
 | Flee reflex, reachable from every state | Built |
-| Thargon health and death | Built, nothing triggers it yet |
+| Drone health and death | Built, nothing triggers it yet |
 | Barnacles, harvesting, Meta-Alloys | Phase 3 |
 | Swarm intent broadcasting and hotkeys | Phase 3 |
-| Swarm factory, Interceptor tiers | Phase 3 |
+| Swarm factory, Matriarch growth stages | Phase 3 |
 | Rival hive commander AI | Phase 4 |
 | Weapons, combat | Phase 4 |
 
@@ -56,9 +56,28 @@ Six of the nine unit states are honest stubs that hold formation: `Launch`,
 whose real behaviour arrives in the phase named above. `Follow` and `Flee` are
 implemented, which is what the flocking and the reflex need.
 
-`Thargon health and death` is built and wired — `take_damage()` deregisters
+`Drone health and death` is built and wired — `take_damage()` deregisters
 from the swarm, emits, and frees — but nothing calls it yet. Barnacle
 harvesting and combat are what will.
+
+### Code names versus fiction names
+
+The code uses deliberately generic role names; the fiction uses Thargoid
+ones. Nothing below is a rename in progress — both names are current and
+both are correct, for different readers.
+
+| Code | Fiction |
+|---|---|
+| `Ship` | Matriarch |
+| `Drone` | Thargoid Drone |
+| `Swarm` | the hive's swarm |
+| `Threat` | anything a Drone flees |
+
+The class names describe roles, not lore, so the setting can change without
+touching logic — which it has already done once, when the reskin from a
+generic setting to Thargoid canon happened without a single script edit. A
+reader also does not need Elite Dangerous lore to follow the code: `Ship`,
+`Drone`, `Swarm` and `Threat` explain themselves.
 
 ---
 
