@@ -30,6 +30,13 @@ signal destroyed(ship: Ship)
 var behaviours: Array[SteeringBehaviour] = []
 var force: Vector3 = Vector3.ZERO
 
+## Optional facing override, set by [PlayerSteeringBehaviour] in AIMED mode.
+## Ignored unless [member use_face_target] is true.
+var face_target: Vector3 = Vector3.ZERO
+
+## When true, orient towards [member face_target] instead of velocity.
+var use_face_target: bool = false
+
 
 func _ready() -> void:
 	_collect_behaviours()
@@ -79,7 +86,14 @@ func _physics_process(delta: float) -> void:
 	if velocity.length() > 0.01:
 		var banked_up: Vector3 = Vector3.UP + acceleration * banking
 		var smoothed_up: Vector3 = global_basis.y.lerp(banked_up, delta * 5.0)
-		if absf(smoothed_up.normalized().dot(velocity.normalized())) < 0.999:
+		if use_face_target:
+			# +Z is the model's front in this codebase. look_at's third
+			# argument aims +Z at the target directly, which reads clearer
+			# here than negating a "look away" vector.
+			var to_face: Vector3 = face_target - global_position
+			if absf(smoothed_up.normalized().dot(to_face.normalized())) < 0.999:
+				look_at(face_target, smoothed_up, true)
+		elif absf(smoothed_up.normalized().dot(velocity.normalized())) < 0.999:
 			look_at(global_position - velocity, smoothed_up)
 
 	if draw_gizmos:
