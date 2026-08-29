@@ -25,6 +25,8 @@ enum HullShape {
 	POD,
 	## An asteroid: an irregular lump.
 	ROCK,
+	## The Matriarch: a flat octagon-derived hull, nose-first.
+	MATRIARCH,
 }
 
 ## Which visual style to render the hull in.
@@ -70,7 +72,15 @@ func _build_solid_mesh() -> ArrayMesh:
 	var colours := PackedColorArray()
 	for i in faces.size():
 		points.append(vertices[faces[i]] * hull_scale)
-		colours.append(hull_colour)
+		# Integer division: the three vertices of one triangle share a face
+		# index, so they share a shade and the facet stays flat.
+		var shade: float = _facet_shade(i / 3)
+		colours.append(Color(
+			hull_colour.r * shade,
+			hull_colour.g * shade,
+			hull_colour.b * shade,
+			hull_colour.a
+		))
 
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
@@ -80,6 +90,21 @@ func _build_solid_mesh() -> ArrayMesh:
 	var array_mesh := ArrayMesh.new()
 	array_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	return array_mesh
+
+
+## How much darker the darkest facet gets, as a fraction of [member
+## hull_colour]. 0.0 makes every facet the base colour.
+@export_range(0.0, 0.6) var facet_shade_spread: float = 0.2
+
+
+## A brightness multiplier for the facet at [param face_index], somewhere in
+## the range 1.0 - [member facet_shade_spread] .. 1.0.
+##
+## Lighting alone does not separate adjacent facets on a cone, because their
+## normals are nearly identical. Varying the base colour per face does.
+func _facet_shade(face_index: int) -> float:
+	# TODO(human)
+	return 1.0
 
 
 ## Assemble the line mesh for [member hull_shape].
@@ -128,6 +153,52 @@ func _vertices_for(shape: HullShape) -> PackedVector3Array:
 				Vector3(0.0, 0.5, -0.6),     # 3 dorsal fin
 				Vector3(0.0, 0.0, -1.4),     # 4 tail
 			])
+		HullShape.MATRIARCH:
+			# Octagonal head-on, like an Interceptor: the octagon lives in the
+			# XY plane and the hull runs along Z through it. Three stations
+			# down the length --
+			#
+			#   1. a small octagonal nose face at the front (the flat),
+			#   2. the full-width octagon behind it (the widest ring),
+			#   3. a single point at the tail (the sharp back).
+			#
+			# The angled front faces are the band between stations 1 and 2:
+			# eight facets sweeping back and outward from the small nose to
+			# the wide ring, which is what "angled and pushed back" means
+			# geometrically.
+			#
+			# Both octagons use corners at 22.5 + 45k degrees, which puts the
+			# FACETS on the cardinals -- flat top, flat bottom, flat sides --
+			# rather than a corner pointing straight up. The flats catch the
+			# light as broad panels, which is the Frontier look; corner-up
+			# would read as a spinning top.
+			#
+			# The nose centre sits slightly proud of its ring so the cap is a
+			# shallow eight-sided pyramid rather than one flat disc. A flat
+			# disc would shade as a single colour and kill the faceting on
+			# the part of the hull the player looks at most.
+			return PackedVector3Array([
+				Vector3(0.0, 0.0, 1.85),      # 0 nose centre, slightly proud
+				# 1..8 nose ring, radius 0.5 at z = 1.7.
+				Vector3(0.462, 0.191, 1.7),   # 1
+				Vector3(0.191, 0.462, 1.7),   # 2
+				Vector3(-0.191, 0.462, 1.7),  # 3
+				Vector3(-0.462, 0.191, 1.7),  # 4
+				Vector3(-0.462, -0.191, 1.7), # 5
+				Vector3(-0.191, -0.462, 1.7), # 6
+				Vector3(0.191, -0.462, 1.7),  # 7
+				Vector3(0.462, -0.191, 1.7),  # 8
+				# 9..16 main ring, radius 1.2 at z = 0.3: the widest point.
+				Vector3(1.109, 0.459, 0.3),   # 9
+				Vector3(0.459, 1.109, 0.3),   # 10
+				Vector3(-0.459, 1.109, 0.3),  # 11
+				Vector3(-1.109, 0.459, 0.3),  # 12
+				Vector3(-1.109, -0.459, 0.3), # 13
+				Vector3(-0.459, -1.109, 0.3), # 14
+				Vector3(0.459, -1.109, 0.3),  # 15
+				Vector3(1.109, -0.459, 0.3),  # 16
+				Vector3(0.0, 0.0, -2.2),      # 17 tail point
+			])
 		HullShape.ROCK:
 			return PackedVector3Array([
 				Vector3(0.0, 1.3, 0.0),
@@ -174,6 +245,49 @@ func _faces_for(shape: HullShape) -> PackedInt32Array:
 				4, 2, 3,
 				2, 0, 3,
 			])
+		HullShape.MATRIARCH:
+			# Three closures, one per section of the hull: a fan over the
+			# nose, a band of quads between the two octagons, and a cone from
+			# the wide ring down to the tail point. 8 + 16 + 8 = 32
+			# triangles, closing the hull with no gaps.
+			return PackedInt32Array([
+				# Nose cap: fan from the proud centre(0) round the nose ring.
+				0, 1, 2,
+				0, 2, 3,
+				0, 3, 4,
+				0, 4, 5,
+				0, 5, 6,
+				0, 6, 7,
+				0, 7, 8,
+				0, 8, 1,
+				# Angled front: each nose edge sweeps back and out to the
+				# matching main-ring edge, two triangles per quad.
+				1, 2, 9,
+				2, 10, 9,
+				2, 3, 10,
+				3, 11, 10,
+				3, 4, 11,
+				4, 12, 11,
+				4, 5, 12,
+				5, 13, 12,
+				5, 6, 13,
+				6, 14, 13,
+				6, 7, 14,
+				7, 15, 14,
+				7, 8, 15,
+				8, 16, 15,
+				8, 1, 16,
+				1, 9, 16,
+				# Rear cone: the whole main ring closes on the tail point(17).
+				9, 10, 17,
+				10, 11, 17,
+				11, 12, 17,
+				12, 13, 17,
+				13, 14, 17,
+				14, 15, 17,
+				15, 16, 17,
+				16, 9, 17,
+			])
 		HullShape.ROCK:
 			# Top vertex(0), ring of five(1..5), bottom vertex(6).
 			return PackedInt32Array([
@@ -209,6 +323,21 @@ func _edges_for(shape: HullShape) -> PackedInt32Array:
 		HullShape.DART:
 			return PackedInt32Array([
 				0, 1, 0, 2, 1, 4, 2, 4, 1, 2, 0, 3, 3, 4,
+			])
+		HullShape.MATRIARCH:
+			return PackedInt32Array([
+				# Nose cap spokes.
+				0, 1, 0, 2, 0, 3, 0, 4, 0, 5, 0, 6, 0, 7, 0, 8,
+				# Nose ring.
+				1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 1,
+				# Longitudinals along the angled front.
+				1, 9, 2, 10, 3, 11, 4, 12, 5, 13, 6, 14, 7, 15, 8, 16,
+				# Main ring.
+				9, 10, 10, 11, 11, 12, 12, 13,
+				13, 14, 14, 15, 15, 16, 16, 9,
+				# Tail spokes.
+				9, 17, 10, 17, 11, 17, 12, 17,
+				13, 17, 14, 17, 15, 17, 16, 17,
 			])
 		HullShape.ROCK:
 			return PackedInt32Array([

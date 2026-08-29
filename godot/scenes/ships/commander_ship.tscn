@@ -13,7 +13,7 @@ script = ExtResource("1_orgs7")
 
 [node name="Hull" type="MeshInstance3D" parent="."]
 script = ExtResource("2_rneqq")
-hull_shape = 0
+hull_shape = 3
 hull_scale = 2.0
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
