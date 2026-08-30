@@ -36,7 +36,13 @@ const GROUP: String = "barnacles"
 @export_group("Debug")
 
 ## Draw the harvest radius and remaining reserve.
-@export var draw_gizmos: bool = true
+##
+## Off by default, unlike most gizmos in this project. There are nine
+## Barnacles spread across the belt and each draws a sphere, so leaving them
+## on fills the screen with wireframe circles that have nothing to do with
+## whatever is being debugged at the time. Turn one on when working on
+## harvesting.
+@export var draw_gizmos: bool = false
 
 
 func _ready() -> void:
