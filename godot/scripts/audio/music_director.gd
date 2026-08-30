@@ -56,10 +56,161 @@ const _SILENCE_DB: float = -60.0
 ## fade still in flight rather than fighting it for control of volume_db.
 var _fade_tween: Tween
 
+@export_group("Situation")
+
+## Which swarm's situation the score follows.
+@export var watched_allegiance: int = 0
+
+## How often the swarm is sampled, in seconds. The score reacts to the
+## situation, not to the frame: sampling at 60 Hz would let one unit briefly
+## entering Flee flip the track and flip it back, which reads as a glitch.
+@export var sample_interval: float = 0.5
+
+## Fraction of the swarm that must be fleeing before the score panics.
+##
+## Deliberately low. One unit running is noise, but a fifth of the swarm
+## running is the player's cue that something is wrong -- and the music
+## should tell them before they have counted.
+@export_range(0.0, 1.0) var flee_fraction: float = 0.2
+
+## The player's ship. Resolved on first sample alongside the swarm.
+@export var ship: Ship
+
+## Fraction of its starting health the ship must fall below before the score
+## treats the player personally as the situation.
+@export_range(0.0, 1.0) var ship_hurt_fraction: float = 0.4
+
+## Which phase each unit state contributes to. States absent from this map
+## contribute nothing, which is what lets the six stub states stay silent
+## until they do something worth scoring.
+const STATE_PHASES: Dictionary = {
+	"Flee": Phase.FLEE,
+	"Engage": Phase.COMBAT,
+	"Harvest": Phase.HARVEST,
+	"Deposit": Phase.HARVEST,
+	"Patrol": Phase.PATROL,
+}
+
+## Phases that win on presence rather than on majority, most urgent first.
+## Danger is not a democracy: a swarm that is mostly harvesting while being
+## shot at is in combat, whatever the majority is doing.
+const URGENT_PHASES: Array = [Phase.FLEE, Phase.COMBAT]
+
+## The swarm being watched. Resolved on first sample, not in _ready(), because
+## Godot readies siblings in scene order and the swarm may not have joined its
+## group yet. Same reason as SwarmCoordinator._resolve_targets().
+var _swarm: Swarm
+
+## Seconds since the last sample.
+var _since_sample: float = 0.0
+
+## The ship's health when first seen, so "hurt" is measured against how much
+## it started with rather than against a number hard-coded here.
+var _ship_full_health: float = 0.0
+
 
 func _ready() -> void:
 	_full_volume_db = volume_db
 	play_phase(Phase.LAUNCH)
+
+
+func _process(delta: float) -> void:
+	_since_sample += delta
+	if _since_sample < sample_interval:
+		return
+	_since_sample = 0.0
+	play_phase(situation())
+
+
+## The phase the player's own circumstances demand, or null if the ship has
+## nothing urgent to say and the swarm should decide.
+##
+## The ship has no state machine -- it is flown by the player, so there is no
+## state name to read. Its situation has to be inferred from its circumstances
+## instead: whether something dangerous is on top of it, and whether it is
+## badly hurt.
+func _ship_situation() -> Variant:
+	if ship == null:
+		# "commander_", not "ship_": that is the group Ship._ready() joins.
+		ship = get_tree().get_first_node_in_group(
+			"commander_" + str(watched_allegiance)
+		) as Ship
+	if ship == null:
+		return null
+	if _ship_full_health <= 0.0:
+		_ship_full_health = ship.health
+
+	# Danger to the commander is combat whatever the drones are doing.
+	var threat: Threat = Threat.nearest_to(get_tree(), ship.global_position)
+	if threat != null:
+		if ship.global_position.distance_to(threat.global_position) <= threat.danger_radius:
+			return Phase.COMBAT
+
+	# A badly hurt commander is the situation, even with no threat in reach:
+	# the player has just survived something and should still hear it.
+	if _ship_full_health > 0.0 and ship.health / _ship_full_health < ship_hurt_fraction:
+		return Phase.FLEE
+
+	return null
+
+
+## Work out what phase the swarm's behaviour amounts to right now.
+##
+## Reads the units' actual states rather than the swarm's intent. An order is
+## what the player asked for; a state is what a unit decided to do about it,
+## and the second is what the player should hear. A swarm ordered to harvest
+## while a threat scatters it is not harvesting, whatever the order says.
+##
+## Falls back to the phase already playing when the swarm is empty or missing,
+## so an unresolved reference holds the current track rather than snapping the
+## score back to LAUNCH.
+func situation() -> Phase:
+	if _swarm == null:
+		var found: Array = get_tree().get_nodes_in_group(
+			"swarm_" + str(watched_allegiance)
+		)
+		if found.is_empty():
+			return current_phase
+		_swarm = found[0] as Swarm
+
+	# The player's own circumstances outrank the swarm's. A commander being
+	# shot at while the drones calmly harvest is not a harvesting scene, and
+	# the swarm's states alone would never say so -- the drones cannot see
+	# what is happening to the ship.
+	var ship_phase: Variant = _ship_situation()
+	if ship_phase != null:
+		return ship_phase
+
+	var total: int = _swarm.units.size()
+	if total == 0:
+		return current_phase
+
+	var counts: Dictionary = {}
+	for unit in _swarm.units:
+		var machine: StateMachine = unit.get_node_or_null("StateMachine") as StateMachine
+		if machine == null or machine.current_state == null:
+			continue
+		var phase: Variant = STATE_PHASES.get(str(machine.current_state.name))
+		if phase == null:
+			continue
+		counts[phase] = counts.get(phase, 0) + 1
+
+	# Fleeing is scored by fraction, so a scattering minority still panics
+	# the music. The other urgent phase only needs one unit in it.
+	if counts.get(Phase.FLEE, 0) >= maxi(1, ceili(total * flee_fraction)):
+		return Phase.FLEE
+	for phase in URGENT_PHASES:
+		if counts.get(phase, 0) > 0:
+			return phase
+
+	# Otherwise whichever ordinary activity most of the swarm is engaged in.
+	var best_phase: Phase = Phase.LAUNCH
+	var best_count: int = 0
+	for phase in counts:
+		if counts[phase] > best_count:
+			best_count = counts[phase]
+			best_phase = phase
+	return best_phase
 
 
 ## Switches the music to the given phase, cross-fading between tracks.
