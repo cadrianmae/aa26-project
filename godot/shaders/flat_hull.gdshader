@@ -10,6 +10,18 @@ uniform vec3 light_direction = vec3(0.4, 0.8, 0.3);
 uniform float ambient : hint_range(0.0, 1.0) = 0.15;
 uniform float brightness : hint_range(0.1, 4.0) = 1.2;
 
+// Multiplied with the mesh's vertex colour. Two jobs.
+//
+// It lets one mesh serve both hives -- the same drone tinted green for the
+// player and gold for the rival -- which is what the palette decision asks
+// for, since both sides are the same species.
+//
+// And it gives modelled meshes a colour without needing vertex colours at
+// all. Blender exports white when a mesh has no colour attribute, and white
+// multiplied by the tint IS the tint, so a hand-modelled hull is coloured
+// from the Inspector rather than from a paint pass in Blender.
+uniform vec4 tint : source_color = vec4(1.0, 1.0, 1.0, 1.0);
+
 void fragment() {
 	vec3 face_normal = normalize(cross(dFdx(VERTEX), dFdy(VERTEX)));
 	if (dot(face_normal, VIEW) < 0.0) {
@@ -19,7 +31,7 @@ void fragment() {
 	float diffuse = max(dot(face_normal, normalize(light_direction)), 0.0);
 	float light = clamp(ambient + diffuse, 0.0, 1.0);
 
-	ALBEDO = COLOR.rgb * light * brightness;
+	ALBEDO = COLOR.rgb * tint.rgb * light * brightness;
 	// Deliberately does NOT write ALPHA. Godot flags any shader that touches
 	// ALPHA as transparent and drops it into the alpha queue, where depth
 	// writing is off and faces draw in submission order rather than depth
