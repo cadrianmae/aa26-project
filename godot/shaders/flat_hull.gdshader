@@ -6,7 +6,24 @@
 shader_type spatial;
 render_mode unshaded, cull_disabled;
 
-uniform vec3 light_direction = vec3(0.4, 0.8, 0.3);
+// GLOBAL uniforms, shared by every hull in the game and written once by
+// StarSystem. Declared in project.godot under [shader_globals].
+//
+// Global rather than per-material because hull materials are created in code
+// -- Hull builds one per mesh, ModelledHull and AsteroidField each build their
+// own -- so there is no single material to set the sun on. Pushing to all of
+// them would mean walking the tree and hoping nothing was missed; a global is
+// written once and every shader sees it.
+//
+// This is also what makes the sun in the sky the sun doing the lighting: the
+// sky shader, the DirectionalLight3D and every hull all read one direction.
+global uniform vec3 sun_direction;
+global uniform vec4 sun_colour;
+// Fill light: what a surface facing away from the star still receives, which
+// here is bounce off the tan gas giant. Without it, unlit faces go pure black
+// and the hulls lose their silhouette against space.
+global uniform vec4 fill_colour;
+
 uniform float ambient : hint_range(0.0, 1.0) = 0.15;
 uniform float brightness : hint_range(0.1, 4.0) = 1.2;
 
@@ -28,10 +45,17 @@ void fragment() {
 		face_normal = -face_normal;
 	}
 
-	float diffuse = max(dot(face_normal, normalize(light_direction)), 0.0);
-	float light = clamp(ambient + diffuse, 0.0, 1.0);
+	float diffuse = max(dot(face_normal, normalize(sun_direction)), 0.0);
 
-	ALBEDO = COLOR.rgb * tint.rgb * light * brightness;
+	// Two coloured terms rather than one white one. The lit side takes the
+	// star's colour and the unlit side takes the gas giant's bounce, so a
+	// facet turning away from the sun shifts in HUE as well as dimming --
+	// which is most of what separates adjacent facets at 640x360, where the
+	// brightness difference alone is only a few pixel values.
+	vec3 lighting = sun_colour.rgb * diffuse + fill_colour.rgb * (1.0 - diffuse);
+	lighting += vec3(ambient);
+
+	ALBEDO = COLOR.rgb * tint.rgb * lighting * brightness;
 	// Deliberately does NOT write ALPHA. Godot flags any shader that touches
 	// ALPHA as transparent and drops it into the alpha queue, where depth
 	// writing is off and faces draw in submission order rather than depth

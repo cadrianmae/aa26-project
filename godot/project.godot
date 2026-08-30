@@ -32,6 +32,26 @@ window/stretch/mode="canvas_items"
 ; pixels non-square, and that is the one thing pixel art cannot survive.
 window/stretch/aspect="expand"
 
+[shader_globals]
+
+; Written at run time by StarSystem, which drives the sky shader, the
+; DirectionalLight3D and every hull from one source. Declared here rather than
+; registered in code so they exist before any shader compiles -- a global that
+; a shader reads before it is registered comes back as zero, which renders
+; every hull black.
+sun_direction={
+"type": "vec3",
+"value": Vector3(0.4, 0.35, 0.85)
+}
+sun_colour={
+"type": "color",
+"value": Color(1, 0.957, 0.91, 1)
+}
+fill_colour={
+"type": "color",
+"value": Color(0.16, 0.14, 0.11, 1)
+}
+
 [autoload]
 
 GizmoToggle="*res://scripts/control/gizmo_toggle.gd"
