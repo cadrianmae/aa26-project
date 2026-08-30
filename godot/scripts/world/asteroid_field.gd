@@ -45,9 +45,26 @@ extends Node3D
 ## outside the green/gold faction range so they can never be misread as units.
 @export var tint: Color = Color(0.42, 0.39, 0.34)
 
+@export_group("Barnacles")
+
+## The Barnacle to grow on chosen asteroids. Left unset, the belt is inert.
+@export var barnacle_scene: PackedScene
+
+## How many asteroids carry a Barnacle. Well under the rock count, so finding
+## one is a reason to range across the belt rather than something the swarm
+## trips over.
+@export var barnacle_count: int = 9
+
+## Alloys in each Barnacle. The hive's drone_cost is 25, so one full Barnacle
+## is worth roughly five drones.
+@export var barnacle_reserve: float = 120.0
+
 ## Every asteroid placed, in placement order. Phase 3's Barnacles read this to
 ## decide which rocks they grow on.
 var asteroids: Array[Node3D] = []
+
+## Every Barnacle grown, so the map can be inspected without a group search.
+var barnacles: Array[Node3D] = []
 
 
 func _ready() -> void:
@@ -55,6 +72,7 @@ func _ready() -> void:
 		push_warning("%s has no asteroid variants assigned." % name)
 		return
 	_scatter()
+	_grow_barnacles()
 
 
 func _scatter() -> void:
@@ -81,6 +99,48 @@ func _scatter() -> void:
 		_tint(rock)
 		add_child(rock)
 		asteroids.append(rock)
+
+
+## Grow Barnacles on a spread of the placed asteroids.
+##
+## Attached to rocks rather than scattered independently, because the fiction
+## says so -- Thargoid Barnacles grow on asteroids -- and because it gives the
+## belt a purpose: a rock is now either worth visiting or it is cover.
+##
+## The chosen rocks are spread evenly through the placement order rather than
+## picked at random. Random choice clusters: with nine picks from forty, two
+## adjacent rocks carrying Barnacles while a whole arc of the belt has none is
+## a common outcome, and it makes half the map pointless.
+func _grow_barnacles() -> void:
+	if barnacle_scene == null or asteroids.is_empty():
+		return
+
+	var wanted: int = mini(barnacle_count, asteroids.size())
+	if wanted <= 0:
+		return
+	var stride: float = float(asteroids.size()) / float(wanted)
+
+	for i in wanted:
+		var rock: Node3D = asteroids[int(i * stride)]
+		var barnacle: Node3D = barnacle_scene.instantiate() as Node3D
+		if barnacle == null:
+			continue
+		# A child of the rock, so it inherits the rock's position but NOT its
+		# scale -- a Barnacle on a 20x asteroid would otherwise be twenty
+		# times the size of one on a small rock, and its harvest radius with
+		# it.
+		barnacle.top_level = true
+		if "reserve" in barnacle:
+			barnacle.reserve = barnacle_reserve
+
+		# add_child BEFORE positioning. global_position is meaningless on a
+		# node outside the tree -- it returns an identity transform and logs
+		# "Condition !is_inside_tree() is true", so the barnacle would land at
+		# the origin instead of on its rock.
+		rock.add_child(barnacle)
+		# Just above the rock's surface, on the movement plane the drones fly.
+		barnacle.global_position = rock.global_position + Vector3(0.0, rock.scale.y, 0.0)
+		barnacles.append(barnacle)
 
 
 ## A position in the belt annulus: inside the field, outside the keep-out.

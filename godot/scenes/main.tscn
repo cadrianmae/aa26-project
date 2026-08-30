@@ -23,8 +23,10 @@
 [ext_resource type="PackedScene" uid="uid://6jr7oit78dgc" path="res://models/asteroid_1.gltf" id="25_ast1"]
 [ext_resource type="PackedScene" uid="uid://e2k488skyr44" path="res://models/asteroid_2.gltf" id="26_ast2"]
 [ext_resource type="PackedScene" uid="uid://bc7ddbb4iy1tk" path="res://models/asteroid_3.gltf" id="27_ast3"]
-[ext_resource type="Script" uid="uid://cebm5bhdsiqu" path="res://scripts/ui/minimap.gd" id="28_minimap"]
-[ext_resource type="Script" uid="uid://o8ji1ggd2kts" path="res://scripts/ui/compass.gd" id="29_compass"]
+[ext_resource type="Script" uid="uid://c4lp3y7qi1c4t" path="res://scripts/ui/radar.gd" id="28_radar"]
+[ext_resource type="Script" uid="uid://be5mpeflvig7n" path="res://scripts/world/pixel_view.gd" id="30_pixel"]
+[ext_resource type="Script" path="res://scripts/agents/hive.gd" id="31_hive"]
+[ext_resource type="PackedScene" path="res://scenes/world/barnacle.tscn" id="32_barnacle"]
 
 [sub_resource type="Environment" id="Environment_a8y0u"]
 background_mode = 1
@@ -32,50 +34,110 @@ glow_enabled = true
 
 [node name="Main" type="Node3D" unique_id=1894958291]
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1597329958]
+[node name="DebugOverlay" type="Control" parent="." unique_id=1409886337]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="PixelView" type="SubViewportContainer" parent="." unique_id=1755024412]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+stretch = true
+stretch_shrink = 2
+script = ExtResource("30_pixel")
+native_debug_canvas = NodePath("../DebugOverlay")
+
+[node name="SubViewport" type="SubViewport" parent="PixelView" unique_id=1097204665]
+handle_input_locally = false
+size = Vector2i(640, 360)
+render_target_update_mode = 4
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="PixelView/SubViewport" unique_id=1597329958]
 environment = SubResource("Environment_a8y0u")
 
-[node name="CommanderShip" parent="." unique_id=900213608 instance=ExtResource("1_o6xl0")]
+[node name="CommanderShip" parent="PixelView/SubViewport" unique_id=900213608 instance=ExtResource("1_o6xl0")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -430, 0, 0)
 
-[node name="PlayerSwarm" type="Node" parent="." unique_id=667554090]
+[node name="PlayerSwarm" type="Node" parent="PixelView/SubViewport" unique_id=667554090]
 script = ExtResource("18_pswarm")
 draw_gizmos = true
 
-[node name="RallyMarker" type="Node3D" parent="." unique_id=1338207714]
+[node name="RallyMarker" type="Node3D" parent="PixelView/SubViewport" unique_id=1338207714]
 script = ExtResource("20_rally")
 
-[node name="Units" type="Node3D" parent="." unique_id=1100179967]
+[node name="Units" type="Node3D" parent="PixelView/SubViewport" unique_id=1100179967]
 
-[node name="SwarmUnit1" parent="Units" unique_id=1211259839 instance=ExtResource("3_85g3d")]
+[node name="SwarmUnit1" parent="PixelView/SubViewport/Units" unique_id=1211259839 instance=ExtResource("3_85g3d")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -436, 0, -6)
 
-[node name="SwarmUnit2" parent="Units" unique_id=979614100 instance=ExtResource("3_85g3d")]
+[node name="SwarmUnit2" parent="PixelView/SubViewport/Units" unique_id=979614100 instance=ExtResource("3_85g3d")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -433, 0, -9)
 
-[node name="SwarmUnit3" parent="Units" unique_id=1761332973 instance=ExtResource("3_85g3d")]
+[node name="SwarmUnit3" parent="PixelView/SubViewport/Units" unique_id=1761332973 instance=ExtResource("3_85g3d")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -430, 0, -11)
 
-[node name="SwarmUnit4" parent="Units" unique_id=1142148591 instance=ExtResource("3_85g3d")]
+[node name="SwarmUnit4" parent="PixelView/SubViewport/Units" unique_id=1142148591 instance=ExtResource("3_85g3d")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -427, 0, -9)
 
-[node name="SwarmUnit5" parent="Units" unique_id=1706158054 instance=ExtResource("3_85g3d")]
+[node name="SwarmUnit5" parent="PixelView/SubViewport/Units" unique_id=1706158054 instance=ExtResource("3_85g3d")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -424, 0, -6)
 
-[node name="Wreck" type="Node3D" parent="." unique_id=1523998741]
+[node name="Wreck" type="Node3D" parent="PixelView/SubViewport" unique_id=1523998741]
 transform = Transform3D(0.176777, 0, 0.176777, 0, 0.25, 0, -0.176777, 0, 0.176777, 0, 0, 0)
 script = ExtResource("22_modelled")
 tint = Color(0.34, 0.34, 0.36, 1)
 
-[node name="Model" parent="Wreck" unique_id=1148832009 instance=ExtResource("21_wreck")]
+[node name="Model" parent="PixelView/SubViewport/Wreck" unique_id=1148832009 instance=ExtResource("21_wreck")]
 
-[node name="AsteroidField" type="Node3D" parent="." unique_id=1994402771]
+[node name="PlayerHive" type="Node3D" parent="PixelView/SubViewport" unique_id=1682217409]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -430, 0, 30)
+script = ExtResource("31_hive")
+drone_scene = ExtResource("3_85g3d")
+
+[node name="AsteroidField" type="Node3D" parent="PixelView/SubViewport" unique_id=1994402771]
 script = ExtResource("23_field")
 variants = Array[PackedScene]([ExtResource("24_ast0"), ExtResource("25_ast1"), ExtResource("26_ast2"), ExtResource("27_ast3")])
+barnacle_scene = ExtResource("32_barnacle")
 
-[node name="Camera3D" type="Camera3D" parent="." unique_id=419878312 node_paths=PackedStringArray("target")]
+[node name="Camera3D" type="Camera3D" parent="PixelView/SubViewport" unique_id=419878312 node_paths=PackedStringArray("target")]
 script = ExtResource("7_trceg")
 target = NodePath("../CommanderShip")
+
+[node name="Starfield" type="MeshInstance3D" parent="PixelView/SubViewport" unique_id=1485603906 node_paths=PackedStringArray("camera")]
+script = ExtResource("16_starfield")
+camera = NodePath("../Camera3D")
+
+[node name="DustField" type="Node3D" parent="PixelView/SubViewport" unique_id=177080258 node_paths=PackedStringArray("camera")]
+script = ExtResource("17_dustfield")
+camera = NodePath("../Camera3D")
+
+[node name="Threat" type="Node3D" parent="PixelView/SubViewport" unique_id=1665094084]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -430, 0, -40)
+script = ExtResource("19_threat")
+
+[node name="HUD" type="CanvasLayer" parent="PixelView/SubViewport" unique_id=1207743310]
+
+[node name="Radar" type="Control" parent="PixelView/SubViewport/HUD" unique_id=1533664052]
+layout_mode = 3
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -167.0
+offset_top = -140.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 0
+grow_vertical = 0
+script = ExtResource("28_radar")
 
 [node name="MusicDirector" type="AudioStreamPlayer" parent="." unique_id=1801350074]
 script = ExtResource("8_musdir")
@@ -86,44 +148,3 @@ patrol_theme = ExtResource("12_patrol")
 flee_theme = ExtResource("13_flee")
 victory_theme = ExtResource("14_victory")
 defeat_theme = ExtResource("15_defeat")
-
-[node name="Starfield" type="MeshInstance3D" parent="." unique_id=1485603906 node_paths=PackedStringArray("camera")]
-script = ExtResource("16_starfield")
-camera = NodePath("../Camera3D")
-
-[node name="DustField" type="Node3D" parent="." unique_id=177080258 node_paths=PackedStringArray("camera")]
-script = ExtResource("17_dustfield")
-camera = NodePath("../Camera3D")
-
-[node name="Threat" type="Node3D" parent="." unique_id=1665094084]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -430, 0, -40)
-script = ExtResource("19_threat")
-
-[node name="HUD" type="CanvasLayer" parent="." unique_id=1207743310]
-
-[node name="Minimap" type="Control" parent="HUD" unique_id=1533664052]
-layout_mode = 3
-anchors_preset = 3
-anchor_left = 1.0
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -228.0
-offset_top = -228.0
-offset_right = -16.0
-offset_bottom = -16.0
-grow_horizontal = 0
-grow_vertical = 0
-script = ExtResource("28_minimap")
-
-[node name="Compass" type="Control" parent="HUD" unique_id=1968256793]
-layout_mode = 3
-anchors_preset = 5
-anchor_left = 0.5
-anchor_right = 0.5
-offset_left = -220.0
-offset_top = 12.0
-offset_right = 220.0
-offset_bottom = 40.0
-grow_horizontal = 2
-script = ExtResource("29_compass")

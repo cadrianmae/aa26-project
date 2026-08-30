@@ -1,0 +1,13 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/world/barnacle.gd" id="1_barnacle"]
+[ext_resource type="Script" path="res://scripts/world/hull.gd" id="2_hull"]
+
+[node name="Barnacle" type="Node3D"]
+script = ExtResource("1_barnacle")
+
+[node name="Hull" type="MeshInstance3D" parent="."]
+script = ExtResource("2_hull")
+hull_shape = 2
+hull_scale = 3.0
+hull_colour = Color(0.62, 0.82, 0.23, 1)
