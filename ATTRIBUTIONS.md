@@ -90,6 +90,26 @@ Theme", composed by Dave Lowe, were deliberately excluded. Unlike the
 classical arrangements used above, they have no public-domain underlying
 composition, so there is no path to a clean, attributable replacement.
 
+## Designs referenced
+
+The setting is a spin-off of Elite Dangerous, and two of its designs are
+referenced visually. Both are Frontier Developments intellectual property.
+Nothing here reuses their assets: every mesh in `blender/` is original
+geometry, built from scratch in a script, interpreting a silhouette from
+publicly published reference images.
+
+- **Thargoid ships and lore** -- Thargoids, Thargoid Interceptors, Thargons,
+  Thargoid Barnacles and Meta-Alloys. The Matriarch and the drones are
+  original designs in that visual language, not copies of specific ships.
+- **Federation Farragut Battle Cruiser** -- the wreck that forms the map's
+  anti-xeno hazard is a low-poly interpretation of its silhouette. 72
+  triangles against the original's detailed model; the resemblance is the
+  outline only.
+
+This is a non-commercial student artefact for CMPU 4031, distributed for
+assessment. No Frontier Developments asset, texture, mesh or audio file is
+included in this repository.
+
 ## Code and technique
 
 - Steering behaviours adapted from Bryan Duggan's
