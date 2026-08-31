@@ -10,7 +10,7 @@ config_version=5
 
 [application]
 
-config/name="Hybrid Bio-Tech Swarm Command"
+config/name="Matriarch Command"
 config/description="CMPU 4031 Autonomous Agents artifact. Mae Capacite C21348423."
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
