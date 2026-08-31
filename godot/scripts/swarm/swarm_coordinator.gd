@@ -70,11 +70,31 @@ func _unhandled_input(event: InputEvent) -> void:
 		if not event.is_action_pressed(action):
 			continue
 		var intent: Swarm.Intent = INTENT_ACTIONS[action]
+		if intent == Swarm.Intent.HARVEST:
+			swarm.harvest_target = designated_barnacle()
 		swarm.order(intent, rally_point())
 		if intent == Swarm.Intent.RALLY and marker != null:
 			marker.place_at(swarm.rally_point)
 		get_viewport().set_input_as_handled()
 		return
+
+
+## Which Barnacle a HARVEST order designates.
+##
+## The one nearest where the player is pointing, not the one nearest the
+## swarm. Aiming is already how the player indicates a place in the world, so
+## reusing it means the order needs no extra control -- point and press 4.
+##
+## Falls back to the nearest Barnacle to the ship when the player has no aim
+## point, which is the gamepad case.
+func designated_barnacle() -> Barnacle:
+	var point: Vector3 = rally_point()
+	var chosen: Barnacle = Barnacle.nearest_to(get_tree(), point)
+	if chosen != null:
+		return chosen
+	if ship == null:
+		return null
+	return Barnacle.nearest_to(get_tree(), ship.global_position)
 
 
 ## Where a RALLY order should send the swarm.

@@ -1,0 +1,14 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/projectile.gd" id="1_projectile"]
+[ext_resource type="Script" path="res://scripts/world/hull.gd" id="2_hull"]
+
+[node name="Projectile" type="Node3D"]
+script = ExtResource("1_projectile")
+
+[node name="Hull" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.35, 0, 0, 0, 0.35, 0, 0, 0, 1.4, 0, 0, 0)
+script = ExtResource("2_hull")
+hull_shape = 1
+hull_scale = 0.6
+hull_colour = Color(1, 0.75, 0.35, 1)

@@ -50,6 +50,18 @@ var intent: Intent = Intent.HOLD
 ## Where [constant Intent.RALLY] sends the swarm, in world space.
 var rally_point: Vector3 = Vector3.ZERO
 
+## The Barnacle the player has designated for [constant Intent.HARVEST].
+##
+## The player chooses WHICH rock; the drones still work out everything else --
+## who gets the claim, who queues, when to come home, what to do when it runs
+## dry. That is the division the whole artefact argues for: the commander sets
+## intent, the swarm handles execution.
+##
+## Letting each drone pick its own nearest Barnacle was the earlier behaviour
+## and it read as the swarm ignoring the player: fifty units would scatter to
+## nine different rocks and there was no decision left to make.
+var harvest_target: Barnacle
+
 ## How far a unit can see a neighbour, in world units.
 @export var neighbour_distance: float = 20.0
 

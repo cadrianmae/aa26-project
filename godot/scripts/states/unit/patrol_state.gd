@@ -1,14 +1,133 @@
-## Circling a designated point, watching for enemies.
+## Sweep the area around the commander, watching for enemies.
 ##
-## Phase 4 fills this in: follow a path around the designated point while the
-## flocking triple keeps the group coherent.
+## The standing order for a swarm with nothing else to do: spread out, circle,
+## and pick a fight if one comes close. It is the intent that turns the swarm
+## from an escort into a screen.
+##
+## The circling is emergent rather than scripted. Each unit is given a slowly
+## rotating point to arrive at, offset by its own index around the circle, so
+## fifty units distribute themselves around the commander without any of them
+## knowing about the others -- the same trick as the formation slots, applied
+## to a moving target.
 class_name PatrolState
 extends State
 
+## The ArriveBehaviour steered at this unit's patrol point.
+@export var arrive_behaviour_name: String = "Arrive"
+
+## Where to go when an enemy comes within reach.
+@export var engage_state_name: String = "Engage"
+
+## Radius of the patrol circle around the commander.
+@export var patrol_radius: float = 60.0
+
+## How fast the circle turns, in radians per second. Slow: the point is to
+## sweep an area, and a fast orbit just makes the swarm dizzy without covering
+## any more ground.
+@export var orbit_speed: float = 0.35
+
+## How far to look for something to fight. Shorter than EngageState's acquire
+## range, so a patrolling swarm commits only to what comes to it rather than
+## charging across the belt at the first contact.
+@export var contact_range: float = 90.0
+
+const ACTIVE_BEHAVIOURS: Array = ["Arrive", "Separation", "Alignment"]
+
+## A node that carries this unit's patrol point. An ArriveBehaviour steers at
+## a Node3D, so the moving point needs to BE one -- the same reason the rally
+## marker is a node rather than a vector.
+var point: Node3D
+
+## Where the circle is centred: the commander, or the swarm's rally point.
+var centre: Node3D
+
+## This unit's own angle around the circle, so the swarm spreads out.
+var _phase: float = 0.0
+
 
 func _enter() -> void:
-	use_only(["OffsetPursue", "Separation", "Alignment", "Cohesion"])
+	centre = get_tree().get_first_node_in_group(
+		"commander_" + str(unit.allegiance)
+	) as Node3D
+
+	if point == null:
+		point = Node3D.new()
+		point.name = "PatrolPoint"
+		# top_level so it holds a world position rather than being dragged
+		# around by the unit it belongs to.
+		point.top_level = true
+		unit.add_child(point)
+
+	# The unit's own place on the circle, derived from its instance id. Any
+	# stable per-unit number works; what matters is that two units never pick
+	# the same one, which a shared counter would risk after respawns.
+	_phase = float(unit.get_instance_id() % 360) * TAU / 360.0
+
+	var arrive: ArriveBehaviour = unit.get_node_or_null(
+		NodePath(arrive_behaviour_name)
+	) as ArriveBehaviour
+	if arrive != null:
+		arrive.target = point
+
+	use_only(ACTIVE_BEHAVIOURS)
+
+
+func _exit() -> void:
+	if point != null:
+		point.queue_free()
+		point = null
 
 
 func _think() -> void:
-	pass
+	if unit == null or machine == null:
+		return
+
+	_advance_point()
+
+	var enemy: Node3D = _nearest_enemy()
+	if enemy == null:
+		return
+	var engage: State = machine.state_named(engage_state_name)
+	if engage != null:
+		machine.change_state(engage)
+
+
+## Move this unit's patrol point around the circle.
+func _advance_point() -> void:
+	if point == null:
+		return
+	var origin: Vector3 = centre.global_position if centre != null else Vector3.ZERO
+	_phase += orbit_speed * get_process_delta_time()
+	point.global_position = origin + Vector3(
+		cos(_phase) * patrol_radius, 0.0, sin(_phase) * patrol_radius
+	)
+
+
+## Nearest hostile unit within [member contact_range], or null.
+func _nearest_enemy() -> Node3D:
+	var enemy: int = 1 - unit.allegiance
+	var closest: Node3D = null
+	var closest_distance: float = contact_range
+
+	for node in get_tree().get_nodes_in_group("swarm_" + str(enemy)):
+		var swarm: Swarm = node as Swarm
+		if swarm == null:
+			continue
+		for drone in swarm.units:
+			if drone == null:
+				continue
+			var distance: float = unit.global_position.distance_to(drone.global_position)
+			if distance < closest_distance:
+				closest_distance = distance
+				closest = drone
+
+	for node in get_tree().get_nodes_in_group("commander_" + str(enemy)):
+		var ship: Node3D = node as Node3D
+		if ship == null:
+			continue
+		var distance: float = unit.global_position.distance_to(ship.global_position)
+		if distance < closest_distance:
+			closest_distance = distance
+			closest = ship
+
+	return closest

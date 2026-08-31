@@ -101,3 +101,17 @@ func change_state(new_state: State) -> void:
 ## can hold its own data across visits.
 func state_named(state_name: String) -> State:
 	return get_node_or_null(NodePath(state_name)) as State
+
+
+## Change to the state with this name, if it exists.
+##
+## Exists so a caller can defer a transition by name. call_deferred cannot
+## carry a State object that has not been resolved yet, and the Hatchery needs
+## exactly that: it must put a new drone into Launch AFTER the machine has
+## entered its own initial state, or the initial state overwrites it.
+func change_state_named(state_name: String) -> void:
+	var state: State = state_named(state_name)
+	if state == null:
+		push_warning("%s: no state named '%s'." % [name, state_name])
+		return
+	change_state(state)

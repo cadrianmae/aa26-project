@@ -25,6 +25,33 @@ const INTENT_STATES: Dictionary = {
 	Swarm.Intent.ENGAGE: "Engage",
 }
 
+## Which states each intent will LEAVE ALONE.
+##
+## The table above says where an order sends a unit. This one says where an
+## order is willing to let a unit stay, and the two are not the same thing:
+##
+##   - HARVEST names a CYCLE. A drone alternates Harvest and Deposit, and
+##     without this the router would drag it out of Deposit on the next frame
+##     and it would never reach the hatchery.
+##   - Every intent tolerates Launch, a TRANSIENT. A drone the factory just
+##     built needs a moment to clear the hatchery whatever the swarm was ordered
+##     to do.
+##   - ENGAGE and PATROL tolerate Detonate, a unit-level DECISION. A drone
+##     spends itself on its own judgement; no order commands it, and no order
+##     should cancel it either.
+##
+## So the rule is: re-assert the order only when the unit is doing something
+## the order does not cover. That keeps the every-frame self-healing -- a unit
+## returning from Flee still gets pulled back to its standing order -- without
+## the router overriding states that are part of carrying that order out.
+const INTENT_PERMITS: Dictionary = {
+	Swarm.Intent.HOLD: ["Follow", "Launch"],
+	Swarm.Intent.RALLY: ["Rally", "Launch"],
+	Swarm.Intent.PATROL: ["Patrol", "Engage", "Detonate", "Launch"],
+	Swarm.Intent.HARVEST: ["Harvest", "Deposit", "Launch"],
+	Swarm.Intent.ENGAGE: ["Engage", "Detonate", "Launch"],
+}
+
 func _think() -> void:
 	if unit == null or machine == null or unit.swarm == null:
 		return
@@ -44,7 +71,16 @@ func _think() -> void:
 			return
 
 	var intent: int = unit.swarm.intent
-	var next_state_name: String = INTENT_STATES.get(intent, "")	
+
+	# Leave the unit alone if what it is already doing carries out the order.
+	# Without this the router re-asserts the order every frame and overrides
+	# Deposit, Launch and Detonate -- states that ARE the order being carried
+	# out, not a departure from it.
+	var permitted: Array = INTENT_PERMITS.get(intent, [])
+	if machine.current_state != null and permitted.has(str(machine.current_state.name)):
+		return
+
+	var next_state_name: String = INTENT_STATES.get(intent, "")
 	next_state = machine.state_named(next_state_name)
 
 	if next_state == null:

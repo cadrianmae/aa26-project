@@ -46,6 +46,19 @@ signal died(unit: Drone)
 ## Current health. Corrosion and enemy fire reduce it.
 @export var health: float = 100.0
 
+@export_group("Harvesting")
+
+## Most Meta-Alloy this unit can carry at once.
+##
+## The cap is what creates the round trip. Without it a drone would harvest a
+## Barnacle dry in one visit and the economy would be a single journey rather
+## than a rhythm the player can watch, interrupt and defend.
+@export var payload_capacity: float = 10.0
+
+## Meta-Alloy currently carried. Filled by [HarvestState], emptied by
+## [DepositState].
+var payload: float = 0.0
+
 @export_group("Debug")
 
 ## Draw the accumulated force and the velocity through DebugDraw3D.
@@ -197,6 +210,33 @@ func _face_direction_of_travel(acceleration: Vector3, delta: float) -> void:
 
 
 ## Reduce health and free the unit when it runs out.
+## Whether this unit is carrying as much as it can.
+##
+## A method rather than callers comparing the two fields themselves, so
+## "full" is defined once. Harvesting and depositing both ask this, and a
+## later phase that adds a carrying upgrade changes only this line.
+func is_full() -> bool:
+	return payload >= payload_capacity
+
+
+## Add up to [param amount] to the payload, returning what was actually taken.
+##
+## Mirrors [method Barnacle.extract]: the caller learns from the return value
+## that the drone filled up, without a separate check that could disagree.
+func load_payload(amount: float) -> float:
+	var space: float = maxf(payload_capacity - payload, 0.0)
+	var taken: float = minf(amount, space)
+	payload += taken
+	return taken
+
+
+## Hand over everything carried, returning how much that was.
+func unload_payload() -> float:
+	var carried: float = payload
+	payload = 0.0
+	return carried
+
+
 func take_damage(amount: float) -> void:
 	health -= amount
 	if health <= 0.0:

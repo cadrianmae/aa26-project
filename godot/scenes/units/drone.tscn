@@ -19,12 +19,17 @@
 [ext_resource type="Script" path="res://scripts/states/unit/swarm_intent_state.gd" id="17_ano56"]
 [ext_resource type="Script" path="res://scripts/steering/arrive_behaviour.gd" id="18_arrive"]
 [ext_resource type="Script" path="res://scripts/states/unit/rally_state.gd" id="19_rally"]
+[ext_resource type="Script" path="res://scripts/steering/seek_behaviour.gd" id="20_seek"]
+[ext_resource type="Script" path="res://scripts/combat/weapon.gd" id="21_weapon"]
+[ext_resource type="PackedScene" path="res://scenes/combat/projectile.tscn" id="22_projectile"]
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_2n87u"]
 radius = 0.7
 
 [node name="SwarmUnit" type="CharacterBody3D" unique_id=1479377799]
 motion_mode = 1
+collision_layer = 2
+collision_mask = 1
 script = ExtResource("1_20mkj")
 
 [node name="Hull" type="MeshInstance3D" parent="." unique_id=642946824]
@@ -43,6 +48,23 @@ weight = 24.0
 slowing_radius = 10.0
 enabled = false
 
+[node name="ArriveBarnacle" type="Node" parent="." unique_id=1804429723]
+script = ExtResource("18_arrive")
+weight = 24.0
+slowing_radius = 5.0
+enabled = false
+
+[node name="ArriveHive" type="Node" parent="." unique_id=1465893272]
+script = ExtResource("18_arrive")
+weight = 24.0
+slowing_radius = 6.0
+enabled = false
+
+[node name="Engage" type="Node" parent="." unique_id=1076285241]
+script = ExtResource("20_seek")
+weight = 22.0
+enabled = false
+
 [node name="Separation" type="Node" parent="." unique_id=1996433514]
 script = ExtResource("5_3ovvs")
 weight = 20.0
@@ -57,6 +79,13 @@ weight = 8.0
 
 [node name="OffsetPursue" type="Node" parent="." unique_id=553600898]
 script = ExtResource("3_wvh5g")
+
+[node name="Weapon" type="Node3D" parent="." unique_id=1319058066]
+script = ExtResource("21_weapon")
+projectile_scene = ExtResource("22_projectile")
+cooldown = 0.7
+damage = 6.0
+range = 45.0
 
 [node name="StateMachine" type="Node" parent="." unique_id=846717208]
 script = ExtResource("8_5rptg")
