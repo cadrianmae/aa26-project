@@ -110,6 +110,14 @@ This is a non-commercial student artefact for CMPU 4031, distributed for
 assessment. No Frontier Developments asset, texture, mesh or audio file is
 included in this repository.
 
+## Sound
+
+The Matriarch's engine and the swarm's roar are **synthesised at run time**,
+not sampled. Their frequencies and levels come from FFT analysis of Elite
+Dangerous reference recordings; the synthesis is original and no Frontier
+audio asset is included in this repository. Method and measurements are in
+[`docs/audio/analysis.md`](docs/audio/analysis.md).
+
 ## Code and technique
 
 - Steering behaviours adapted from Bryan Duggan's
@@ -119,6 +127,10 @@ included in this repository.
 - Reynolds, C. W., *Steering Behaviors For Autonomous Characters*,
   https://www.red3d.com/cwr/steer/
 - Reynolds, C. W., *Boids*, https://www.red3d.com/cwr/boids/
+- The rival commander's decision-making is a utility system, following Dave
+  Mark's Infinite Axis Utility System: actions scored by independent weighted
+  considerations, multiplied so any one can veto, with the count compensated
+  for. https://www.gameai.com/iaus.php
 - The `debug_draw_3d` addon, vendored under `godot/addons/debug_draw_3d/`.
   Copyright (c) 2024 DmitriySalnikov, released under the MIT licence (see
   `godot/addons/debug_draw_3d/LICENSE` for the full text).
