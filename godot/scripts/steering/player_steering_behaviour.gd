@@ -153,9 +153,19 @@ func calculate() -> Vector3:
 	var strafe: float = Input.get_axis("move_left", "move_right")
 
 	var force := Vector3.ZERO
-	force += move * camera_forward() * thrust
-	force += strafe * camera_right() * thrust
+	force += move * camera_forward()
+	force += strafe * camera_right()
 	force.y = 0.0
+
+	# Normalise BEFORE applying thrust, or holding two directions at once
+	# gives a force of length sqrt(2) and the ship travels 41% faster on the
+	# diagonals than along the axes. Clamped rather than normalised outright,
+	# so a gamepad stick pushed half way still gives half thrust -- normalising
+	# unconditionally would turn every analogue input into full throttle.
+	if force.length() > 1.0:
+		force = force.normalized()
+	force *= thrust
+
 	last_force = force
 	return force
 
