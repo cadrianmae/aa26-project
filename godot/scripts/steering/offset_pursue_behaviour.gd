@@ -71,7 +71,9 @@ func calculate() -> Vector3:
 	var lead_time: float = dist / agent.max_speed
 	projected = world_target + leader.velocity * lead_time
 	projected.y = agent.global_position.y
-	return arrive_towards(projected, slowing_radius)
+	# Same derived radius as ArriveBehaviour: a formation slot chased at twice
+	# the speed needs four times the room to settle into.
+	return arrive_towards(projected, maxf(slowing_radius, braking_distance()))
 
 
 func on_draw_gizmos() -> void:

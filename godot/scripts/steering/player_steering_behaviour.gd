@@ -39,7 +39,14 @@ const AIM_STICK_DEADZONE: float = 0.001
 const AIM_STICK_PROJECTION_DISTANCE: float = 10.0
 
 ## Thrust applied along the camera-relative forward/right axes.
-@export var thrust: float = 30.0
+##
+## This, not [member Ship.max_speed], is what sets how fast the player actually
+## goes. The ship accelerates until thrust balances damping, so its cruising
+## speed is thrust / (mass * damping) -- with the Matriarch's mass of 4 and
+## damping of 0.6, that is thrust / 2.4. `max_speed` is only a ceiling, and the
+## ship settles well below it, so raising `max_speed` alone changes nothing at
+## all. Raise this instead.
+@export var thrust: float = 60.0
 
 ## The camera that movement and aiming are relative to. Falls back to the
 ## viewport's active camera in [method _ready] if left unset -- see that

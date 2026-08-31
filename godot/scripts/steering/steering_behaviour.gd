@@ -74,6 +74,32 @@ func seek_towards(destination: Vector3) -> Vector3:
 ## line below it divides by [code]dist[/code], which blows up at the target and
 ## makes the agent jitter or emit NaN. It also gives a clean stop condition.
 ## Adapted from Duggan, behaviors/boid.gd:106-116.
+## The distance this agent needs in order to stop from full speed.
+##
+## Braking distance from the constant-acceleration result, v^2 / 2a, where the
+## agent's acceleration is its force ceiling over its mass. Both terms come
+## from the agent itself, so the radius tracks whatever the agent is tuned to
+## -- doubling a unit's speed quadruples the room it needs, and nothing has to
+## be re-tuned by hand.
+##
+## Quadratically, not linearly: a unit going twice as fast carries four times
+## the kinetic energy and needs four times the distance to shed it. A radius
+## that scaled linearly would still overshoot, just less obviously.
+##
+## [param scale] is per-behaviour taste -- below 1 brakes late and arrives
+## hard, above 1 drifts in gently.
+func braking_distance(scale: float = 1.0) -> float:
+	if agent == null:
+		return 0.0
+	var speed: float = agent.max_speed if "max_speed" in agent else 0.0
+	var force: float = agent.max_force if "max_force" in agent else 0.0
+	var mass: float = agent.mass if "mass" in agent else 1.0
+	if force <= 0.0 or mass <= 0.0:
+		return 0.0
+	var acceleration: float = force / mass
+	return (speed * speed) / (2.0 * acceleration) * scale
+
+
 func arrive_towards(destination: Vector3, slowing_radius: float) -> Vector3:
 	var to_target: Vector3 = destination - agent.global_position
 	var dist: float = to_target.length()
