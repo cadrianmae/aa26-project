@@ -28,7 +28,14 @@ signal died(unit: Drone)
 
 ## Speed ceiling in units per second. Behaviours read this to size the
 ## velocity they ask for, so it is an input, not a readout.
-@export var max_speed: float = 12.0
+## Top speed, in world units per second.
+##
+## 1.5x the Matriarch's 18. A drone that cannot outrun the ship it escorts can
+## never break off and come back, so the attack runs in [EngageState] depend
+## on this margin -- and a swarm that moves visibly faster than the capital
+## ship is what makes it read as a cloud of small things rather than a formation
+## of little ships.
+@export var max_speed: float = 27.0
 
 ## Ceiling on the summed steering force. Without it, several behaviours pulling
 ## the same way produce unbounded acceleration and the motion reads as robotic.
