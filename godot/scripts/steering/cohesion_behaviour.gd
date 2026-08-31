@@ -14,12 +14,52 @@
 class_name CohesionBehaviour
 extends SteeringBehaviour
 
+## How loose the swarm gets when its commander is nearly dead, as a fraction
+## of full cohesion.
+##
+## Taken from how Thargon swarms behave in Elite Dangerous: as the Interceptor
+## controlling them loses hearts, its swarm visibly moves with LESS cohesion.
+## The swarm's tightness reports the mothership's health, so a player reads
+## how a fight is going by looking at the enemy's drones rather than at a bar.
+##
+## Emergent rather than scripted: nothing tells the drones to spread out. One
+## weight falls, the separation force that was always there stops being
+## balanced, and the formation opens up on its own.
+@export_range(0.0, 1.0) var wounded_cohesion: float = 0.2
+
+## The commander this unit's cohesion depends on. Resolved on first use, never
+## in _ready(): Godot readies siblings in scene order, and a drone can be ready
+## before the ship it belongs to.
+var _commander: Ship
+
+## The commander's health when first seen, so "hurt" is a proportion rather
+## than a number hard-coded here.
+var _commander_full_health: float = 0.0
+
 
 func _ready() -> void:
 	super()
 	var unit: Drone = agent as Drone
 	if unit != null:
 		unit.count_neighbours = true
+
+
+## How tightly this unit should flock right now, from wounded_cohesion to 1.0.
+func cohesion_scale() -> float:
+	var unit: Drone = agent as Drone
+	if unit == null:
+		return 1.0
+	if _commander == null:
+		_commander = get_tree().get_first_node_in_group(
+			"commander_" + str(unit.allegiance)
+		) as Ship
+		if _commander == null:
+			return 1.0
+		_commander_full_health = _commander.health
+	if not is_instance_valid(_commander) or _commander_full_health <= 0.0:
+		return wounded_cohesion
+	var health: float = clampf(_commander.health / _commander_full_health, 0.0, 1.0)
+	return lerpf(wounded_cohesion, 1.0, health)
 
 
 func calculate() -> Vector3:
@@ -40,7 +80,10 @@ func calculate() -> Vector3:
 	centre_of_mass /= float(valid)
 	var force: Vector3 = seek_towards(centre_of_mass).normalized()
 	force.y = 0.0
-	return force
+	# Scaled here rather than by writing to `weight`, so the Inspector value
+	# keeps meaning "how cohesive is this swarm at full health" instead of
+	# being silently overwritten every frame.
+	return force * cohesion_scale()
 
 
 func on_draw_gizmos() -> void:

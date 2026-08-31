@@ -22,6 +22,7 @@
 [ext_resource type="Script" path="res://scripts/steering/seek_behaviour.gd" id="20_seek"]
 [ext_resource type="Script" path="res://scripts/combat/weapon.gd" id="21_weapon"]
 [ext_resource type="PackedScene" path="res://scenes/combat/projectile.tscn" id="22_projectile"]
+[ext_resource type="Script" path="res://scripts/steering/wander_behaviour.gd" id="23_wander"]
 
 [sub_resource type="SphereShape3D" id="SphereShape3D_2n87u"]
 radius = 0.7
@@ -79,6 +80,10 @@ weight = 8.0
 
 [node name="OffsetPursue" type="Node" parent="." unique_id=553600898]
 script = ExtResource("3_wvh5g")
+
+[node name="Wander" type="Node" parent="." unique_id=1348277561]
+script = ExtResource("23_wander")
+weight = 3.5
 
 [node name="Weapon" type="Node3D" parent="." unique_id=1319058066]
 script = ExtResource("21_weapon")
