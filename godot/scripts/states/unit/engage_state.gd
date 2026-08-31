@@ -90,9 +90,37 @@ func acquire() -> Node3D:
 			closest_score = distance
 			closest = ship
 
+	# Nothing within acquire_range. Advance on the enemy commander anyway,
+	# at whatever distance it sits.
+	#
+	# Without this, ENGAGE was silently a no-op whenever the enemy started
+	# further away than acquire_range: the seek behaviour kept a null target
+	# and contributed zero force, so a swarm ordered to attack drifted on
+	# separation, alignment and wander alone -- moving, so it never looked
+	# broken, but never arriving either. A swarm told to attack must always
+	# have somewhere to go, and the commander is the one target that cannot
+	# be out of reach, because reaching it IS the attack.
+	if closest == null:
+		closest = _enemy_commander(enemy)
+
 	target = closest
 	_point_seek_at_target()
 	return target
+
+
+## The enemy commander at any distance, or null if it is already dead.
+func _enemy_commander(enemy: int) -> Node3D:
+	var closest: Node3D = null
+	var closest_distance: float = INF
+	for node in get_tree().get_nodes_in_group("commander_" + str(enemy)):
+		var ship: Node3D = node as Node3D
+		if ship == null or not is_instance_valid(ship):
+			continue
+		var distance: float = unit.global_position.distance_to(ship.global_position)
+		if distance < closest_distance:
+			closest_distance = distance
+			closest = ship
+	return closest
 
 
 func _think() -> void:
