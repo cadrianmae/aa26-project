@@ -71,7 +71,11 @@ static func escalating() -> UtilityProfile:
 			# Wanted most when the swarm is small. As it fills out, this falls
 			# away and the other intents overtake it -- which IS the
 			# escalation, with nothing sequencing it.
-			need(&"war_readiness", INVERSE),
+			#
+			# Floored at 0.35 so harvesting never drops to nothing even at full
+			# strength: a commander that stops mining the moment it is ready to
+			# fight has no way to replace what the fight costs it.
+			need(&"war_readiness", INVERSE, 0.0, 1.0, 0.5, 0.35),
 			# Nearer rocks preferred, but a floor so a distant rock is still
 			# better than idling. Without the floor, distance alone could veto
 			# the whole economy.
@@ -84,9 +88,9 @@ static func escalating() -> UtilityProfile:
 		# PATROL -- the middle of the arc: strong enough to be out, nothing
 		# worth committing to yet.
 		Swarm.Intent.PATROL: [
-			# Needs real numbers behind it. Below half readiness this is
-			# nearly zero and HARVEST wins.
-			need(&"war_readiness", LINEAR, 0.4, 1.0),
+			# Needs real numbers behind it. Below 0.45 readiness this is zero
+			# and HARVEST wins uncontested.
+			need(&"war_readiness", LINEAR, 0.45, 1.0),
 			# More attractive when there is no rock to work. With a floor, so
 			# a commander with a rock still patrols occasionally rather than
 			# mining until attacked.
@@ -102,10 +106,16 @@ static func escalating() -> UtilityProfile:
 		# attacks the moment it can is an AI that dies early.
 		Swarm.Intent.ENGAGE: [
 			need(&"has_enemy", THRESHOLD),
-			# QUADRATIC, so readiness of 0.7 scores 0.49 rather than 0.7. The
-			# commander waits for a genuinely strong swarm instead of a merely
-			# adequate one.
-			need(&"war_readiness", QUADRATIC),
+			# QUADRATIC and gated at 0.6: below that much of a swarm this is
+			# ZERO, not merely small, so a thin swarm cannot attack at all.
+			#
+			# Without the gate the commander opened on ENGAGE with five drones
+			# against a minimum_war_swarm of eight -- readiness 0.62 squared to
+			# 0.39, which still beat a HARVEST that had nothing to multiply it
+			# up. Remapping the input so 0.6 is the new zero makes the early
+			# game genuinely unwinnable for ENGAGE rather than just unlikely,
+			# and that is what forces the economy to come first.
+			need(&"war_readiness", QUADRATIC, 0.6, 1.0),
 			# Prefers to pick the fight in good health, but will not refuse
 			# one outright -- hence the floor.
 			need(&"health", LINEAR, 0.25, 1.0, 0.5, 0.3),

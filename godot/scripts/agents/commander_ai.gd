@@ -32,7 +32,12 @@ signal decided(intent: Swarm.Intent)
 @export var harvest_range: float = 700.0
 
 ## Below this many drones the hatchery is considered too weak to fight.
-@export var minimum_war_swarm: int = 8
+##
+## Raised from 8: with the match opening at five drones, eight put the rival
+## at 0.62 readiness on the first decision, which was enough to reach for
+## ENGAGE immediately. Fourteen means an opening swarm sits near 0.36 and has
+## to be grown before the commander will consider a fight.
+@export var minimum_war_swarm: int = 14
 
 ## Below this fraction of starting health the commander disengages.
 @export_range(0.0, 1.0) var retreat_health_fraction: float = 0.35
@@ -54,6 +59,14 @@ signal decided(intent: Swarm.Intent)
 ## about why. This is how a demo shows the reasoning, and how a bad decision
 ## gets diagnosed as a bad WEIGHT rather than a bug.
 @export var log_scores: bool = false
+
+## Draw the commander's reasoning in the world: its intent, every option's
+## score, and the point it is steering at.
+##
+## The console logs above answer the same questions but only for whoever is
+## watching stdout. This puts the reasoning on screen, where it can be seen in
+## a recording.
+@export var draw_gizmos: bool = true
 
 ## Resolved on first use, never in _ready(): Godot readies siblings in scene
 ## order, so any of these may not have joined its group yet.
@@ -112,12 +125,17 @@ func _build_profile() -> UtilityProfile:
 
 
 func _process(delta: float) -> void:
+	# Resolved and drawn EVERY frame, before the interval gate below. The
+	# commander only decides every decision_interval, but a display that
+	# appeared for one frame every 2.5 seconds would be unreadable.
+	_resolve()
+	_process_gizmos()
+
 	_since_decision += delta
 	if _since_decision < decision_interval:
 		return
 	_since_decision = 0.0
 
-	_resolve()
 	if swarm == null:
 		return
 
@@ -328,3 +346,66 @@ func move_destination(intent: Swarm.Intent) -> Vector3:
 			return ship.global_position
 
 	return ship.global_position
+
+
+## Draw what the commander is thinking.
+##
+## The rival is the most sophisticated thing in the project and, until this,
+## the least visible: a utility system names a winner and says nothing about
+## why, so from outside it is indistinguishable from a script picking at
+## random. Everything below exists to make the decision legible while it is
+## being made -- to a player, to a marker, and to whoever is debugging a
+## commander that has decided to do something strange.
+##
+## Drawn every frame although the AI only decides every decision_interval, so
+## the display is continuous rather than blinking once every 2.5 seconds.
+func _process_gizmos() -> void:
+	if not draw_gizmos or ship == null:
+		return
+
+	var at: Vector3 = ship.global_position
+
+	# The standing intent, above the ship. Colour carries urgency so the state
+	# is readable without stopping to read the word.
+	DebugDraw3D.draw_text(
+		at + Vector3(0.0, 14.0, 0.0),
+		Swarm.Intent.keys()[current_intent],
+		24,
+		_intent_colour(current_intent)
+	)
+
+	# Where the commander is steering, and the line it is taking to get there.
+	# A commander that has picked HARVEST but is flying nowhere near a Barnacle
+	# is the failure this makes obvious at a glance.
+	if move_marker != null:
+		DebugDraw3D.draw_line(at, move_marker.global_position, Color(1.0, 0.85, 0.4, 0.6))
+		DebugDraw3D.draw_sphere(move_marker.global_position, 6.0, Color(1.0, 0.85, 0.4))
+
+	# Every option's score, not just the winner. This is the whole argument for
+	# a utility system over a state machine: the reasoning is a set of numbers
+	# rather than a branch, so it can be shown.
+	if profile == null:
+		return
+	var scores: Dictionary = profile.explain(gather_inputs(), current_intent)
+	var row: int = 0
+	for intent in scores:
+		var winner: bool = intent == current_intent
+		DebugDraw3D.draw_text(
+			at + Vector3(0.0, 11.0 - float(row) * 2.2, 0.0),
+			"%s %.2f" % [Swarm.Intent.keys()[intent], scores[intent]],
+			16,
+			Color(1.0, 0.95, 0.7) if winner else Color(0.7, 0.7, 0.7, 0.7)
+		)
+		row += 1
+
+
+## Intent to colour, so the label reads at a glance.
+func _intent_colour(intent: Swarm.Intent) -> Color:
+	match intent:
+		Swarm.Intent.ENGAGE:
+			return Color(1.0, 0.42, 0.30)
+		Swarm.Intent.HARVEST:
+			return Color(0.62, 0.82, 0.23)
+		Swarm.Intent.PATROL:
+			return Color(0.85, 0.64, 0.26)
+	return Color(0.7, 0.75, 0.8)

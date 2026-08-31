@@ -82,7 +82,15 @@ func best_intent(
 
 	for intent in considerations:
 		var value: float = score(intent, inputs)
-		if intent == current:
+		# Momentum only on an option that is still viable. Adding it
+		# unconditionally floored the CURRENT intent at `momentum` rather than
+		# at zero, so a vetoed intent could never be abandoned while it was the
+		# one being held: the commander went on ordering HARVEST at a stripped
+		# belt because 0.12 beat every honest alternative.
+		#
+		# That defeats the whole reason considerations are multiplied. A veto
+		# has to survive every later adjustment, or it is not a veto.
+		if intent == current and value > 0.0:
 			value += momentum
 		if value > best_score:
 			best_score = value
@@ -99,7 +107,10 @@ func explain(inputs: Dictionary, current: int) -> Dictionary:
 	var scores: Dictionary = {}
 	for intent in considerations:
 		var value: float = score(intent, inputs)
-		if intent == current:
+		# Same rule as best_intent, and it must stay the same rule: this is
+		# what the log prints, so any difference between them would make the
+		# debug output describe a decision the commander did not make.
+		if intent == current and value > 0.0:
 			value += momentum
 		scores[intent] = value
 	return scores
