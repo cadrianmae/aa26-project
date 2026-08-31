@@ -32,6 +32,7 @@
 [ext_resource type="Script" uid="uid://0ff5r7xu672q" path="res://scripts/ui/resource_readout.gd" id="37_alloys"]
 [ext_resource type="Script" uid="uid://cr4r4ydys71br" path="res://scripts/audio/engine_hum.gd" id="38_hum"]
 [ext_resource type="Script" uid="uid://kknrbx4fqg5o" path="res://scripts/audio/swarm_roar.gd" id="39_roar"]
+[ext_resource type="Script" uid="uid://bvbvvh4fr7bsy" path="res://scripts/ui/status_panel.gd" id="40_status"]
 
 [sub_resource type="ShaderMaterial" id="SkyMaterial_star"]
 shader = ExtResource("34_sky")
@@ -192,18 +193,49 @@ script = ExtResource("19_threat")
 
 [node name="Radar" type="Control" parent="PixelView/SubViewport/HUD" unique_id=1533664052]
 layout_mode = 3
-anchors_preset = 3
-anchor_left = 1.0
+anchors_preset = 7
+anchor_left = 0.5
 anchor_top = 1.0
-anchor_right = 1.0
+anchor_right = 0.5
 anchor_bottom = 1.0
-offset_left = -184.0
+offset_left = -88.0
 offset_top = -150.0
-offset_right = -8.0
+offset_right = 88.0
 offset_bottom = -8.0
-grow_horizontal = 0
+grow_horizontal = 2
 grow_vertical = 0
 script = ExtResource("28_radar")
+
+[node name="TargetStatus" type="Control" parent="PixelView/SubViewport/HUD" unique_id=1533664053]
+layout_mode = 3
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -212.0
+offset_top = -134.0
+offset_right = -96.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 0
+script = ExtResource("40_status")
+mode = 1
+
+[node name="ShipStatus" type="Control" parent="PixelView/SubViewport/HUD" unique_id=1533664054]
+layout_mode = 3
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = 96.0
+offset_top = -134.0
+offset_right = 212.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 0
+script = ExtResource("40_status")
 
 [node name="ResourceReadout" type="Control" parent="PixelView/SubViewport/HUD" unique_id=1811440962]
 layout_mode = 3
