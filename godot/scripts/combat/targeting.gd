@@ -71,6 +71,13 @@ func _ready() -> void:
 		return
 	if ship.allegiance != 0:
 		set_process(false)
+		# Input too, NOT just process. set_process(false) stops _process and
+		# nothing else, so the rival's copy of this node went on handling the
+		# player's keypresses and cycled targets with a marker it had never
+		# built -- crashing on the first press of T or Tab. Both hives instance
+		# the same scene, so every input handler added to it needs shutting
+		# off here, not only the per-frame work.
+		set_process_unhandled_input(false)
 		return
 
 	_swarm_marker = Node3D.new()
@@ -209,6 +216,11 @@ func clear() -> void:
 func _select(contact: Dictionary) -> void:
 	kind = contact["kind"]
 	if kind == Kind.SWARM:
+		# No marker means this is not the player's copy of the node and should
+		# never have got here. Refuse rather than crash.
+		if _swarm_marker == null:
+			kind = Kind.NONE
+			return
 		_tracked_swarm = contact["swarm"]
 		_swarm_marker.global_position = swarm_centre(_tracked_swarm)
 		current = _swarm_marker
