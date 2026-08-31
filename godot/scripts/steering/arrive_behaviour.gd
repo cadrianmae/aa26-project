@@ -13,7 +13,9 @@ extends SteeringBehaviour
 
 
 func calculate() -> Vector3:
-	if target == null:
+	# is_instance_valid as well as null: a freed node is NOT null, and reading
+	# global_position off one throws.
+	if target == null or not is_instance_valid(target):
 		return Vector3.ZERO
 	return arrive_towards(target.global_position, slowing_radius)
 

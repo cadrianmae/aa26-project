@@ -122,7 +122,15 @@ func _objective() -> Vector3:
 			continue
 		if not ("target" in behaviour):
 			continue
-		var target: Node3D = behaviour.target as Node3D
-		if target != null and is_instance_valid(target):
+		# Validity checked BEFORE the cast, not after. `as` on a freed object
+		# throws "Trying to cast a freed object" in its own right, so a check
+		# on the result never runs -- the crash happens on the way to it. A
+		# behaviour holds its target as a plain reference, and the target can
+		# be freed at any time: shot down, or detonated.
+		var held: Variant = behaviour.target
+		if held == null or not is_instance_valid(held):
+			continue
+		var target: Node3D = held as Node3D
+		if target != null:
 			return target.global_position
 	return Vector3.INF
