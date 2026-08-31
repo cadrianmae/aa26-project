@@ -21,6 +21,8 @@
 [ext_resource type="Script" path="res://scripts/states/unit/rally_state.gd" id="19_rally"]
 [ext_resource type="Script" path="res://scripts/steering/seek_behaviour.gd" id="20_seek"]
 [ext_resource type="Script" path="res://scripts/combat/weapon.gd" id="21_weapon"]
+[ext_resource type="Script" path="res://scripts/world/thruster.gd" id="30_thruster"]
+[ext_resource type="Script" path="res://scripts/steering/obstacle_avoidance_behaviour.gd" id="31_avoid"]
 [ext_resource type="PackedScene" path="res://scenes/combat/projectile.tscn" id="22_projectile"]
 [ext_resource type="Script" path="res://scripts/steering/wander_behaviour.gd" id="23_wander"]
 
@@ -42,6 +44,11 @@ shape = SubResource("SphereShape3D_2n87u")
 [node name="Flee" type="Node" parent="." unique_id=290573163]
 script = ExtResource("4_mc7j1")
 weight = 40.0
+
+[node name="Avoid" type="Node" parent="."]
+script = ExtResource("31_avoid")
+weight = 30.0
+clearance = 3.0
 
 [node name="Arrive" type="Node" parent="." unique_id=1120044501]
 script = ExtResource("18_arrive")
@@ -85,12 +92,21 @@ script = ExtResource("3_wvh5g")
 script = ExtResource("23_wander")
 weight = 3.5
 
+[node name="Thruster" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.7)
+script = ExtResource("30_thruster")
+spark_count = 12
+trail_lifetime = 0.4
+glow_range = 3.5
+
 [node name="Weapon" type="Node3D" parent="." unique_id=1319058066]
 script = ExtResource("21_weapon")
 projectile_scene = ExtResource("22_projectile")
 cooldown = 0.7
 damage = 6.0
 range = 45.0
+fixed_mount = true
+mount_arc_degrees = 18.0
 
 [node name="StateMachine" type="Node" parent="." unique_id=846717208]
 script = ExtResource("8_5rptg")

@@ -12,6 +12,8 @@
 [ext_resource type="Script" path="res://scripts/combat/player_gunner.gd" id="10_gunner"]
 [ext_resource type="Script" path="res://scripts/combat/targeting.gd" id="11_target"]
 [ext_resource type="Script" path="res://scripts/combat/target_ring.gd" id="12_ring"]
+[ext_resource type="Script" path="res://scripts/world/thruster.gd" id="13_thruster"]
+[ext_resource type="Script" path="res://scripts/steering/obstacle_avoidance_behaviour.gd" id="14_avoid"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_3h2om"]
 size = Vector3(2.4, 0.6, 4)
@@ -30,6 +32,11 @@ hull_scale = 2.0
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 shape = SubResource("BoxShape3D_3h2om")
 
+[node name="Avoid" type="Node" parent="."]
+script = ExtResource("14_avoid")
+weight = 3.0
+clearance = 6.0
+
 [node name="PlayerSteering" type="Node" parent="."]
 script = ExtResource("3_st06i")
 
@@ -39,7 +46,7 @@ top_level = true
 [node name="CommanderArrive" type="Node" parent="."]
 script = ExtResource("9_arrive")
 enabled = false
-weight = 1.0
+weight = 2.5
 slowing_radius = 60.0
 target = NodePath("../MoveTarget")
 
@@ -62,10 +69,32 @@ script = ExtResource("12_ring")
 [node name="PlayerGunner" type="Node" parent="."]
 script = ExtResource("10_gunner")
 
+[node name="ThrusterRearLeft" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.95, 0, -1.75)
+script = ExtResource("13_thruster")
+glow_range = 7.0
+
+[node name="ThrusterRearRight" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.95, 0, -1.75)
+script = ExtResource("13_thruster")
+glow_range = 7.0
+
+[node name="ThrusterFrontLeft" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.95, 0, 0.35)
+script = ExtResource("13_thruster")
+glow_range = 7.0
+
+[node name="ThrusterFrontRight" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.95, 0, 0.35)
+script = ExtResource("13_thruster")
+glow_range = 7.0
+
 [node name="Weapon" type="Node3D" parent="."]
 script = ExtResource("5_weapon")
 projectile_scene = ExtResource("6_projectile")
 cooldown = 0.35
+burst_count = 3
+burst_interval = 0.09
 damage = 14.0
 range = 90.0
 muzzle_offset = 8.0
