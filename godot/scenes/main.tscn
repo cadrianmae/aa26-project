@@ -30,6 +30,8 @@
 [ext_resource type="Script" uid="uid://c8s2r4etrm8wr" path="res://scripts/agents/commander_ai.gd" id="35_ai"]
 [ext_resource type="Script" uid="uid://cqu0anj4hmydv" path="res://scripts/world/match_state.gd" id="36_match"]
 [ext_resource type="Script" uid="uid://0ff5r7xu672q" path="res://scripts/ui/resource_readout.gd" id="37_alloys"]
+[ext_resource type="Script" uid="uid://cr4r4ydys71br" path="res://scripts/audio/engine_hum.gd" id="38_hum"]
+[ext_resource type="Script" uid="uid://kknrbx4fqg5o" path="res://scripts/audio/swarm_roar.gd" id="39_roar"]
 
 [sub_resource type="ShaderMaterial" id="SkyMaterial_star"]
 shader = ExtResource("34_sky")
@@ -214,6 +216,12 @@ offset_right = -8.0
 offset_bottom = 52.0
 grow_horizontal = 0
 script = ExtResource("37_alloys")
+
+[node name="EngineHum" type="AudioStreamPlayer" parent="." unique_id=1226318744]
+script = ExtResource("38_hum")
+
+[node name="SwarmRoar" type="AudioStreamPlayer" parent="." unique_id=1591338030]
+script = ExtResource("39_roar")
 
 [node name="MusicDirector" type="AudioStreamPlayer" parent="." unique_id=1801350074]
 script = ExtResource("8_musdir")
