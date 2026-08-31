@@ -37,10 +37,23 @@ signal decided(intent: Swarm.Intent)
 ## Below this fraction of starting health the commander disengages.
 @export_range(0.0, 1.0) var retreat_health_fraction: float = 0.35
 
+## Which personality to play with. See [CommanderProfiles].
+##
+## A future opponent is a new function there and a new name here -- the
+## scoring machinery does not change.
+@export var profile_name: StringName = &"escalating"
+
 @export_group("Debug")
 
 ## Print each decision, so a demo can be narrated from the console.
 @export var log_decisions: bool = false
+
+## Print every intent's score, not just the winner.
+##
+## A utility system is opaque from outside: it names a winner and says nothing
+## about why. This is how a demo shows the reasoning, and how a bad decision
+## gets diagnosed as a bad WEIGHT rather than a bug.
+@export var log_scores: bool = false
 
 ## Resolved on first use, never in _ready(): Godot readies siblings in scene
 ## order, so any of these may not have joined its group yet.
@@ -55,7 +68,35 @@ var full_health: float = 0.0
 ## The intent currently being issued.
 var current_intent: Swarm.Intent = Swarm.Intent.HOLD
 
+## The personality this commander plays with.
+##
+## Built on ready from [member profile_name]. Swapping it swaps the opponent
+## entirely, with no code path between the two: the scorer is the same, only
+## the table it reads changes.
+var profile: UtilityProfile
+
 var _since_decision: float = 0.0
+
+
+func _ready() -> void:
+	profile = _build_profile()
+
+
+## Look up the named profile.
+##
+## A match rather than a dictionary of callables, so a typo is a compile-time
+## complaint about an unknown identifier instead of a silent fallback that
+## makes the enemy inexplicably passive.
+func _build_profile() -> UtilityProfile:
+	match profile_name:
+		&"escalating":
+			return CommanderProfiles.escalating()
+		_:
+			push_warning(
+				"%s: no profile named '%s'; the commander will hold."
+				% [name, profile_name]
+			)
+			return CommanderProfiles.escalating()
 
 
 func _process(delta: float) -> void:
@@ -67,6 +108,13 @@ func _process(delta: float) -> void:
 	_resolve()
 	if swarm == null:
 		return
+
+	if log_scores and profile != null:
+		var scores: Dictionary = profile.explain(gather_inputs(), current_intent)
+		var report: PackedStringArray = PackedStringArray()
+		for key in scores:
+			report.append("%s %.2f" % [Swarm.Intent.keys()[key], scores[key]])
+		print("[CommanderAI %d] " % allegiance + ", ".join(report))
 
 	var intent: Swarm.Intent = decide()
 	if intent == current_intent:
@@ -154,10 +202,71 @@ func rally_point() -> Vector3:
 	return Vector3.ZERO
 
 
+## Everything the profile can reason about, normalised to 0..1.
+##
+## Gathered once per decision and handed over as data. The profile never
+## touches the world -- it sees only these numbers -- which is what lets a
+## different personality be a different table rather than different code.
+##
+## Normalised because a consideration's curve is written against 0..1. Raw
+## values would tie every curve to whatever units it happened to be given, and
+## a profile tuned on one map would be wrong on the next.
+func gather_inputs() -> Dictionary:
+	var barnacle: Barnacle = nearest_barnacle()
+	var enemy: Node3D = nearest_enemy()
+	var from: Vector3 = ship.global_position if ship != null else Vector3.ZERO
+
+	var health: float = 1.0
+	if ship != null and full_health > 0.0:
+		health = clampf(ship.health / full_health, 0.0, 1.0)
+
+	var swarm_fraction: float = 0.0
+	if hatchery != null and hatchery.max_drones > 0:
+		swarm_fraction = clampf(
+			float(swarm_size()) / float(hatchery.max_drones), 0.0, 1.0
+		)
+
+	# 1.0 means "as many drones as this commander thinks it needs to fight".
+	var war_readiness: float = 0.0
+	if minimum_war_swarm > 0:
+		war_readiness = clampf(
+			float(swarm_size()) / float(minimum_war_swarm), 0.0, 1.0
+		)
+
+	var alloy_fraction: float = 0.0
+	if hatchery != null and hatchery.drone_cost > 0.0:
+		alloy_fraction = clampf(alloys() / hatchery.drone_cost, 0.0, 1.0)
+
+	# Distances against harvest_range, so 1.0 is "as far as I am willing to go".
+	var barnacle_distance: float = 1.0
+	if barnacle != null and harvest_range > 0.0:
+		barnacle_distance = clampf(
+			from.distance_to(barnacle.global_position) / harvest_range, 0.0, 1.0
+		)
+
+	var enemy_distance: float = 1.0
+	if enemy != null and harvest_range > 0.0:
+		enemy_distance = clampf(
+			from.distance_to(enemy.global_position) / harvest_range, 0.0, 1.0
+		)
+
+	return {
+		&"health": health,
+		&"swarm_fraction": swarm_fraction,
+		&"war_readiness": war_readiness,
+		&"alloy_fraction": alloy_fraction,
+		&"has_barnacle": 1.0 if barnacle != null else 0.0,
+		&"barnacle_distance": barnacle_distance,
+		&"has_enemy": 1.0 if enemy != null else 0.0,
+		&"enemy_distance": enemy_distance,
+	}
+
+
 ## Choose what this hatchery should be doing.
 ##
-## Called on [member decision_interval]. Everything it needs is available as
-## a method above, so it reads as a policy rather than as plumbing.
+## Called on [member decision_interval]. The reasoning lives in the profile,
+## so this only reads the world and asks.
 func decide() -> Swarm.Intent:
-	# TODO(human)
-	return Swarm.Intent.HOLD
+	if profile == null:
+		return Swarm.Intent.HOLD
+	return profile.best_intent(gather_inputs(), current_intent) as Swarm.Intent
