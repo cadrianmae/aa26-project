@@ -45,11 +45,32 @@ enum RenderStyle {
 ## Hull colour. Player cyan, enemy amber, asteroids a dull green.
 @export var hull_colour: Color = Color(0.2, 0.9, 1.0)
 
+## Take the colour from the owning agent's allegiance instead.
+##
+## The player and the rival fly the SAME scenes -- one commander_ship.tscn, one
+## drone.tscn, instanced twice -- so a colour set in the scene file would paint
+## both sides identically. Deriving it from allegiance is what lets one scene
+## serve both hives, which is also the reason the fiction works: they are the
+## same species.
+##
+## Anything with no allegiance in its ancestry keeps its own colour, so
+## Barnacles and asteroids are unaffected without needing to opt out.
+@export var use_faction_colour: bool = true
+
+## Caustic green: the player's hive.
+@export var player_colour: Color = Color(0.435, 0.812, 0.353)
+
+## Amber gold: the rival hive. Both are Thargoid, so the palette stays inside
+## the same biotech range and splits by hue rather than by unrelated colours.
+@export var rival_colour: Color = Color(0.851, 0.643, 0.255)
+
 ## Uniform scale applied to the authored vertex list.
 @export var hull_scale: float = 1.0
 
 
 func _ready() -> void:
+	if use_faction_colour:
+		_apply_faction_colour()
 	match render_style:
 		RenderStyle.WIREFRAME:
 			mesh = _build_wireframe_mesh()
@@ -57,6 +78,21 @@ func _ready() -> void:
 		_:
 			mesh = _build_solid_mesh()
 			material_override = _build_solid_material()
+
+
+## Colour this hull by the allegiance of whatever owns it.
+##
+## Walks UP the tree rather than reading the immediate parent: a Hull can sit
+## directly on a Drone, or under a Projectile, or a level deeper inside an
+## imported model. Anything with no allegiance anywhere above it -- a Barnacle,
+## an asteroid -- keeps the colour it was given.
+func _apply_faction_colour() -> void:
+	var node: Node = get_parent()
+	while node != null:
+		if "allegiance" in node:
+			hull_colour = rival_colour if node.allegiance == 1 else player_colour
+			return
+		node = node.get_parent()
 
 
 ## Assemble the flat-shaded solid mesh for [member hull_shape].
