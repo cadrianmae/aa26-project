@@ -62,6 +62,22 @@ func _resolve_targets() -> void:
 		marker = RallyMarker.for_swarm(get_tree(), allegiance)
 
 
+## Keep the standing harvest order pointed at whatever the player has locked.
+##
+## The order key sets harvest_target once, at the moment it is pressed. But a
+## player who is already harvesting and then locks a different rock expects the
+## swarm to switch -- without re-issuing the order, which from their side they
+## have no reason to think is necessary. The lock IS the instruction, so it has
+## to keep applying rather than only being read on a key press.
+func _process(_delta: float) -> void:
+	_resolve_targets()
+	if swarm == null or swarm.intent != Swarm.Intent.HARVEST:
+		return
+	var locked: Barnacle = targeted_barnacle()
+	if locked != null and locked != swarm.harvest_target:
+		swarm.harvest_target = locked
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	_resolve_targets()
 	if swarm == null:
@@ -81,13 +97,20 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## Which Barnacle a HARVEST order designates.
 ##
-## The one nearest where the player is pointing, not the one nearest the
-## swarm. Aiming is already how the player indicates a place in the world, so
-## reusing it means the order needs no extra control -- point and press 4.
+## An explicit target lock wins over everything. If the player has selected a
+## Barnacle with T or Tab, that is unambiguously the one they mean, and an
+## order that quietly picked a different rock because the cursor had drifted
+## would make the lock look broken.
 ##
-## Falls back to the nearest Barnacle to the ship when the player has no aim
-## point, which is the gamepad case.
+## Otherwise the one nearest where the player is pointing: aiming is already
+## how the player indicates a place in the world, so the order needs no extra
+## control -- point and press 4. Falling back to the nearest Barnacle to the
+## ship keeps it usable on a gamepad, where there is no cursor to read.
 func designated_barnacle() -> Barnacle:
+	var locked: Barnacle = targeted_barnacle()
+	if locked != null:
+		return locked
+
 	var point: Vector3 = rally_point()
 	var chosen: Barnacle = Barnacle.nearest_to(get_tree(), point)
 	if chosen != null:
@@ -95,6 +118,26 @@ func designated_barnacle() -> Barnacle:
 	if ship == null:
 		return null
 	return Barnacle.nearest_to(get_tree(), ship.global_position)
+
+
+## The Barnacle the player currently has targeted, or null.
+##
+## Resolved through the ship rather than held as a reference, for the reason
+## the rest of this class resolves lazily: Targeting lives on the commander
+## and may not exist yet when this node is ready.
+func targeted_barnacle() -> Barnacle:
+	if ship == null:
+		return null
+	var targeting: Node = ship.get_node_or_null("Targeting")
+	if targeting == null:
+		return null
+	var chosen: Node = targeting.current
+	if chosen == null or not is_instance_valid(chosen):
+		return null
+	var barnacle: Barnacle = chosen as Barnacle
+	if barnacle == null or barnacle.is_spent():
+		return null
+	return barnacle
 
 
 ## Where a RALLY order should send the swarm.

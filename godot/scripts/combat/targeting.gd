@@ -62,6 +62,14 @@ var _tracked_swarm: Swarm
 ## Largest the tracked swarm has been seen at, so its bar has a denominator.
 var _swarm_peak: int = 0
 
+## Health the current target was first seen at, so its bar has a denominator.
+##
+## Captured rather than read from a maximum, because neither Ship nor Drone
+## exports one. The cost is that a target first seen already damaged reads as
+## undamaged; the alternative was a hard-coded constant that was wrong for
+## every ship in the game.
+var _target_full_health: float = 0.0
+
 
 func _ready() -> void:
 	ship = get_parent() as Ship
@@ -210,10 +218,16 @@ func clear() -> void:
 	current = null
 	kind = Kind.NONE
 	_tracked_swarm = null
+	_target_full_health = 0.0
+	_swarm_peak = 0
 	target_changed.emit(null)
 
 
 func _select(contact: Dictionary) -> void:
+	# Cleared per selection: a baseline carried over from the last target
+	# would make the new one's bar read against the wrong maximum.
+	_target_full_health = 0.0
+	_swarm_peak = 0
 	kind = contact["kind"]
 	if kind == Kind.SWARM:
 		# No marker means this is not the player's copy of the node and should
@@ -354,6 +368,25 @@ func target_health_fraction() -> float:
 		return clampf(float(alive) / float(maxi(_swarm_peak, 1)), 0.0, 1.0)
 	if current == null or not is_instance_valid(current):
 		return -1.0
+
+	# A Barnacle reports how much alloy is left in it, not health -- it is a
+	# resource, not a combatant, and "how much is left to take" is the number
+	# the player actually wants. It has no `health` field at all, so before
+	# this it silently fell through to -1.0 and the panel drew no bar.
+	if kind == Kind.BARNACLE and current.has_method("fullness"):
+		return clampf(current.fullness(), 0.0, 1.0)
+
 	if "health" in current:
-		return clampf(current.health / 100.0, 0.0, 1.0)
+		# Against the target's OWN maximum, recorded when it spawned. A Ship
+		# starts at 500 and a Drone at 100, so the hard-coded 100.0 used here
+		# before read every rival commander as undamaged until it was below a
+		# fifth of its health -- no feedback for four fifths of the fight.
+		#
+		# Asked of the target rather than captured on selection, so a ship that
+		# was already damaged when the player locked it still reports honestly.
+		var maximum: float = current.max_health if "max_health" in current else 0.0
+		if maximum <= 0.0:
+			return -1.0
+		return clampf(current.health / maximum, 0.0, 1.0)
+
 	return -1.0

@@ -55,6 +55,12 @@ extends Node3D
 ## trips over.
 @export var barnacle_count: int = 9
 
+## How far past its rock's collider a Barnacle is placed.
+##
+## Enough that the Barnacle is clear of the rock and a drone can settle against
+## it, without it floating so far off that it stops reading as growing there.
+@export var barnacle_surface_margin: float = 3.0
+
 ## Alloys in each Barnacle. The hatchery's drone_cost is 25, so one full Barnacle
 ## is worth roughly five drones.
 @export var barnacle_reserve: float = 120.0
@@ -139,13 +145,28 @@ func _grow_barnacles() -> void:
 		# "Condition !is_inside_tree() is true", so the barnacle would land at
 		# the origin instead of on its rock.
 		rock.add_child(barnacle)
-		# On the movement plane, y = 0, whatever height its rock drifted to.
-		# The game is played on a plane: a Barnacle 18 units above it is one
-		# the swarm has to climb to reach, and the steering forces have their
-		# Y zeroed, so it could never get there at all.
+		# On the ROCK'S SURFACE, on the movement plane -- not at its centre.
+		#
+		# Two constraints, and the centre satisfied neither. The game is played
+		# on a plane and steering forces have their Y zeroed, so a Barnacle at
+		# its rock's true height is one the swarm could never climb to. And a
+		# rock scales up to 20x a 1.05 collider, so a Barnacle at the centre of
+		# any but the smallest sits INSIDE solid geometry: drones would fly at
+		# it, hit the collider, and slide around the outside forever, never
+		# reaching a harvest radius buried in rock.
+		#
+		# Pushed out past the collider so the Barnacle and its whole harvest
+		# radius sit in open space. The sphere is centred at the rock's real
+		# height, so its cross-section at y = 0 is narrower than its full
+		# radius -- clearing the full radius therefore always clears the plane.
+		var rock_radius: float = 1.05 * rock.scale.x
+		# Golden angle, so successive Barnacles face different directions
+		# rather than all budding off the same side of the belt.
+		var facing: float = float(i) * 2.39996
+		var outward := Vector3(cos(facing), 0.0, sin(facing))
 		barnacle.global_position = Vector3(
 			rock.global_position.x, 0.0, rock.global_position.z
-		)
+		) + outward * (rock_radius + barnacle_surface_margin)
 		barnacles.append(barnacle)
 
 
