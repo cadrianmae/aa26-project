@@ -11,6 +11,7 @@
 [ext_resource type="Script" path="res://scripts/steering/arrive_behaviour.gd" id="9_arrive"]
 [ext_resource type="Script" path="res://scripts/combat/player_gunner.gd" id="10_gunner"]
 [ext_resource type="Script" path="res://scripts/combat/targeting.gd" id="11_target"]
+[ext_resource type="Script" path="res://scripts/combat/target_ring.gd" id="12_ring"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_3h2om"]
 size = Vector3(2.4, 0.6, 4)
@@ -54,6 +55,9 @@ drone_scene = ExtResource("8_drone")
 
 [node name="Targeting" type="Node" parent="."]
 script = ExtResource("11_target")
+
+[node name="TargetRing" type="MeshInstance3D" parent="."]
+script = ExtResource("12_ring")
 
 [node name="PlayerGunner" type="Node" parent="."]
 script = ExtResource("10_gunner")

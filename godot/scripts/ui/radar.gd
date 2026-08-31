@@ -135,6 +135,9 @@ extends Control
 @export var cardinal_colour: Color = Color(0.435, 0.812, 0.353)
 @export var centre_colour: Color = Color(1.0, 1.0, 1.0, 0.9)
 
+## Lock ring colour when the target is a Barnacle rather than an enemy.
+@export var barnacle_lock_colour: Color = Color(0.62, 0.82, 0.23)
+
 ## Cardinal bearings. North is world -Z, matching the disc's fixed-north
 ## convention so the arc and the scope agree about which way is up.
 const CARDINALS: Dictionary = {
@@ -147,6 +150,7 @@ const CARDINALS: Dictionary = {
 ## the rest of the game's geometry.
 const CURVE_SEGMENTS: int = 36
 
+var _targeting: Targeting
 var _ship: Node3D
 var _field: Node3D
 var _wreck: Node3D
@@ -176,6 +180,8 @@ func _resolve() -> void:
 		_wreck = tree.get_root().find_child("Wreck", true, false) as Node3D
 	if _camera == null:
 		_camera = tree.get_root().find_child("Camera3D", true, false) as FollowCamera
+	if _targeting == null and _ship != null:
+		_targeting = _ship.get_node_or_null("Targeting") as Targeting
 
 
 func _disc_centre() -> Vector2:
@@ -208,8 +214,40 @@ func _draw() -> void:
 	_resolve()
 	_draw_disc()
 	_draw_contacts()
+	# After the contacts, so the lock ring sits ON the blip rather than under
+	# it, and before the arc so the rim furniture stays on top.
+	_draw_target_lock()
 	_draw_arc()
 	_draw_speed_bar()
+
+
+## A ring around the targeted contact's blip.
+##
+## The same lock the world ring draws, reported on the scope. A player
+## checking the radar should not have to look back at the world to remember
+## which contact they hold -- and when the target is off the disc, the blip is
+## clamped to the rim, so the ring doubles as a bearing to it.
+func _draw_target_lock() -> void:
+	if _targeting == null or _targeting.current == null:
+		return
+	if not is_instance_valid(_targeting.current):
+		return
+
+	var at: Vector2 = _to_disc(_targeting.current.global_position)
+	var tint: Color = (
+		barnacle_lock_colour
+		if _targeting.kind == Targeting.Kind.BARNACLE
+		else rival_colour
+	)
+
+	# Two rings and four ticks, rather than one circle: a lone circle at this
+	# size is indistinguishable from another contact.
+	draw_circle(at, 5.5, tint, false, 1.0)
+	draw_circle(at, 3.0, Color(tint, 0.5), false, 1.0)
+	for i in 4:
+		var angle: float = TAU * float(i) / 4.0 + PI * 0.25
+		var direction := Vector2(cos(angle), sin(angle))
+		draw_line(at + direction * 5.0, at + direction * 8.0, tint, 1.0)
 
 
 ## A segmented speed gauge wrapping the disc's right-hand side.
