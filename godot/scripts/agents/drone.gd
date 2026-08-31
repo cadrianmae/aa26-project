@@ -182,6 +182,12 @@ func _physics_process(delta: float) -> void:
 
 	move_and_slide()
 
+	# Pinned to the plane after the move. Zeroed forces keep a drone from
+	# steering off it, but move_and_slide pushes along a contact normal, and a
+	# rock's sphere collider has one that points partly up -- so a collision
+	# lifts the drone off the plane with no Y velocity to bring it back.
+	global_position.y = 0.0
+
 	if velocity.length() > 0.01:
 		_face_direction_of_travel(acceleration, delta)
 

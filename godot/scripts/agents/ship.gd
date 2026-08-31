@@ -83,6 +83,15 @@ func _physics_process(delta: float) -> void:
 
 	move_and_slide()
 
+	# Pinned to the plane AFTER the move, not just before it. Zeroing the
+	# force and the velocity keeps the ship from steering off the plane, but
+	# move_and_slide resolves collisions by pushing along the contact normal --
+	# and a sphere collider on a rock has a normal with a Y component, so
+	# clipping an asteroid lifted the ship off the plane with no velocity in Y
+	# at all. Nothing then brought it back, because nothing was wrong with its
+	# velocity.
+	global_position.y = 0.0
+
 	if velocity.length() > 0.01:
 		var banked_up: Vector3 = Vector3.UP + acceleration * banking
 		var smoothed_up: Vector3 = global_basis.y.lerp(banked_up, delta * 5.0)
