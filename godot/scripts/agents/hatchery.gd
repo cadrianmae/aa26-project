@@ -4,16 +4,22 @@
 ## drones. That loop is the whole reason harvesting matters -- without it the
 ## alloy count is a score rather than a resource.
 ##
-## One Hive per allegiance. The rival hive is the same script with a different
-## allegiance, not a special case: [CommanderAI] spends through the same API
-## the player's harvesting fills, so the two sides run identical economies and
-## only their decisions differ.
+## Lives ON the Matriarch, as a child node, not as a structure somewhere in
+## the belt. The capital ship IS the hatchery: it grows the drones and they bring
+## their loads back to it. That follows the fiction, and it makes the
+## commander's position a decision -- fly forward and the supply line follows,
+## with every drone's round trip getting shorter or longer accordingly.
+##
+## One Hatchery per allegiance. The rival's is the same script under a different
+## ship, not a special case: [CommanderAI] spends through the same API the
+## player's harvesting fills, so both sides run identical economies and only
+## their decisions differ.
 ##
 ## Spawning lives here rather than in [Swarm] because they answer different
-## questions. The Swarm knows who is near whom; the Hive knows who exists and
+## questions. The Swarm knows who is near whom; the Hatchery knows who exists and
 ## what they cost. Keeping them apart is what let the Swarm be written before
 ## anything could spawn.
-class_name Hive
+class_name Hatchery
 extends Node3D
 
 ## Emitted whenever the pool changes, so a HUD can react rather than poll.
@@ -23,20 +29,30 @@ signal alloys_changed(total: float)
 signal drone_spawned(drone: Drone)
 
 ## Group naming, matching the Swarm's own "swarm_<allegiance>" convention.
-const GROUP_PREFIX: String = "hive_"
+const GROUP_PREFIX: String = "hatchery_"
 
-## Which side this hive belongs to.
+## Which side this hatchery belongs to.
 @export var allegiance: int = 0
 
 ## Meta-Alloys in the pool.
 @export var alloys: float = 0.0
 
 ## How close a drone must be to deposit.
-@export var deposit_radius: float = 18.0
+##
+## Tight, and paired with the node sitting BEHIND the Matriarch rather than at
+## its centre. The hull is about 8 units long, so a drone delivering to the
+## ship's middle would be flying through it; delivering to a point off the
+## tail makes the drones queue into the ship's wake, which reads as a supply
+## line instead of as drones vanishing into the hull.
+##
+## Because the node is a child of the ship, the offset rotates with it -- turn
+## the Matriarch and the drop-off swings round to stay astern, with nothing
+## computing that.
+@export var deposit_radius: float = 7.0
 
 @export_group("Factory")
 
-## The drone to build. Left unset, the hive banks alloys and never spends.
+## The drone to build. Left unset, the hatchery banks alloys and never spends.
 @export var drone_scene: PackedScene
 
 ## What one drone costs.
@@ -47,7 +63,7 @@ const GROUP_PREFIX: String = "hive_"
 ## limit rather than a design one.
 @export var max_drones: int = 40
 
-## How far from the hive a new drone appears.
+## How far from the hatchery a new drone appears.
 @export var spawn_spread: float = 12.0
 
 ## Seconds between build attempts. Not per frame: at 60 Hz a full pool would
@@ -61,7 +77,7 @@ const GROUP_PREFIX: String = "hive_"
 @export var draw_gizmos: bool = true
 
 ## The swarm new drones join. Resolved on first use, never in _ready(): Godot
-## readies siblings in scene order, and this hive may be ready first.
+## readies siblings in scene order, and this hatchery may be ready first.
 var _swarm: Swarm
 
 ## Seconds since the last build attempt.
@@ -69,18 +85,25 @@ var _since_build: float = 0.0
 
 
 func _ready() -> void:
+	# Inherit the ship's side rather than being set twice. A hatchery on the
+	# rival's Matriarch that was left at allegiance 0 would quietly bank the
+	# enemy's alloys into the player's pool, which is the kind of fault that
+	# looks like a balance problem rather than a bug.
+	var carrier: Node = get_parent()
+	if carrier != null and "allegiance" in carrier:
+		allegiance = carrier.allegiance
 	add_to_group(GROUP_PREFIX + str(allegiance))
 
 
-## The hive for [param allegiance_id], or null if that side has none.
+## The hatchery for [param allegiance_id], or null if that side has none.
 ##
-## Static and group-based so a drone spawned at run time can find its hive
+## Static and group-based so a drone spawned at run time can find its hatchery
 ## with no wiring. Mirrors [method RallyMarker.for_swarm].
-static func for_allegiance(tree: SceneTree, allegiance_id: int) -> Hive:
+static func for_allegiance(tree: SceneTree, allegiance_id: int) -> Hatchery:
 	var found: Array = tree.get_nodes_in_group(GROUP_PREFIX + str(allegiance_id))
 	if found.is_empty():
 		return null
-	return found[0] as Hive
+	return found[0] as Hatchery
 
 
 ## Add alloys to the pool.
@@ -122,9 +145,9 @@ func _process(delta: float) -> void:
 
 ## Spend one drone's worth of alloys, if there are alloys and room.
 ##
-## One per interval rather than draining the pool in a loop: a hive that
+## One per interval rather than draining the pool in a loop: a hatchery that
 ## banked a hundred alloys while its drones were away should not answer with
-## four ships at once. Production paced this way also gives the rival hive a
+## four ships at once. Production paced this way also gives the rival hatchery a
 ## visible build-up the player can read and respond to.
 func _try_build() -> void:
 	if drone_scene == null:
@@ -166,6 +189,30 @@ func spawn_drone() -> Drone:
 		cos(angle) * distance, 0.0, sin(angle) * distance
 	)
 
-	get_parent().add_child(drone)
+	_drone_container().add_child(drone)
+	_launch(drone)
 	drone_spawned.emit(drone)
 	return drone
+
+
+## Where new drones are parented.
+##
+## A SIBLING of the Matriarch, never a child of it. The hatchery rides on the
+## ship, so parenting drones to the hatchery would make them children of the ship
+## too -- and they would then inherit its transform, flying in rigid lockstep
+## with it however hard their own steering pushed. The whole swarm would move
+## as one object.
+func _drone_container() -> Node:
+	var carrier: Node = get_parent()
+	if carrier != null and carrier.get_parent() != null:
+		return carrier.get_parent()
+	return get_tree().current_scene
+
+
+## Put a newly built drone into LaunchState.
+##
+## Deferred, because the drone's StateMachine enters its initial state in a
+## deferred call of its own -- changing state before that lands would be
+## immediately overwritten by the scene's initial_state.
+func _launch(drone: Drone) -> void:
+	drone.get_node("StateMachine").call_deferred("change_state_named", "Launch")

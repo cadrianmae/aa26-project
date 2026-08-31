@@ -4,12 +4,18 @@
 [ext_resource type="Script" path="res://scripts/world/hull.gd" id="2_rneqq"]
 [ext_resource type="Script" path="res://scripts/steering/player_steering_behaviour.gd" id="3_st06i"]
 [ext_resource type="Script" path="res://scripts/swarm/swarm_coordinator.gd" id="4_coord"]
+[ext_resource type="Script" path="res://scripts/combat/weapon.gd" id="5_weapon"]
+[ext_resource type="PackedScene" path="res://scenes/combat/projectile.tscn" id="6_projectile"]
+[ext_resource type="Script" path="res://scripts/agents/hatchery.gd" id="7_hatchery"]
+[ext_resource type="PackedScene" path="res://scenes/units/drone.tscn" id="8_drone"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_3h2om"]
 size = Vector3(2.4, 0.6, 4)
 
 [node name="CommanderShip" type="CharacterBody3D"]
 motion_mode = 1
+collision_layer = 4
+collision_mask = 1
 script = ExtResource("1_orgs7")
 
 [node name="Hull" type="MeshInstance3D" parent="."]
@@ -25,3 +31,18 @@ script = ExtResource("3_st06i")
 
 [node name="SwarmCoordinator" type="Node" parent="."]
 script = ExtResource("4_coord")
+
+[node name="Hatchery" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -7)
+script = ExtResource("7_hatchery")
+deposit_radius = 7.0
+spawn_spread = 5.0
+drone_scene = ExtResource("8_drone")
+
+[node name="Weapon" type="Node3D" parent="."]
+script = ExtResource("5_weapon")
+projectile_scene = ExtResource("6_projectile")
+cooldown = 0.35
+damage = 14.0
+range = 90.0
+muzzle_offset = 8.0
