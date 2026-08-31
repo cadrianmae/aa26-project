@@ -33,19 +33,88 @@ extends Control
 @export_range(0.0, 80.0) var tilt_degrees: float = 45.0
 
 ## Disc radius as a fraction of the control's width.
-@export_range(0.1, 0.6) var disc_radius_ratio: float = 0.42
+##
+## Everything else is sized RELATIVE to this -- the heading arc at 1.13, its
+## labels at 1.22, the speed bar at 1.12 -- so the widest thing drawn reaches
+## about 1.3 disc radii from the centre. The ratio therefore has to stay under
+## 1 / 2.6 or the instrument draws outside its own control, and a Control does
+## not clip its own drawing: it spills across the screen rather than being cut
+## off at the panel edge.
+@export_range(0.1, 0.6) var disc_radius_ratio: float = 0.33
 
-## Where the disc centre sits vertically, as a fraction of the height. Below
-## the middle, because the heading arc wraps over the top and needs the room.
-@export_range(0.0, 1.0) var disc_centre_ratio: float = 0.62
+## Where the disc centre sits vertically, as a fraction of the height.
+##
+## Above the middle, because the disc is squashed to cos(45) but the arc and
+## labels above it are not -- so the instrument needs more room over the disc
+## than under it.
+@export_range(0.0, 1.0) var disc_centre_ratio: float = 0.50
 
 ## Radius of the heading arc, relative to the disc radius.
-@export var arc_radius_ratio: float = 1.26
+##
+## Set well clear of the rim. The arc and the disc are different instruments
+## -- one says which way you face, the other where things are -- and drawn
+## close together they read as one crowded ring. The gap is what separates
+## them.
+##
+## Constrained by the control's half-width, since the tick labels sit a
+## further 1.12 out and Controls do not clip their own drawing: overflow
+## paints across the screen rather than being cut off at the panel edge.
+@export var arc_radius_ratio: float = 1.30
 
-## How many degrees of heading the arc spans. 180 puts everything ahead of the
-## camera on the arc and everything behind it off, which is the distinction
-## that matters when flying.
-@export var arc_span_degrees: float = 180.0
+## How many degrees of heading the arc spans.
+##
+## 90 rather than a full 180. The arc's job is to say where the camera points
+## and roughly what lies either side of that -- a wider sweep runs down the
+## disc's flanks, crowds the scope and collides with the speed bar. Anything
+## outside this span is off the arc, which is information in itself: it is
+## well off to one side or behind you.
+@export var arc_span_degrees: float = 90.0
+
+## How much SCREEN arc the band physically occupies, in degrees.
+##
+## Separate from arc_span_degrees, and the distinction matters: that one says
+## how many degrees of HEADING fit on the band, this says how long the band
+## LOOKS. The first version hard-coded the screen sweep at 180 degrees, so
+## narrowing the heading span only zoomed the scale in -- the arc stayed a
+## half circle however it was tuned.
+@export var arc_screen_span_degrees: float = 104.0
+
+@export_group("Speed bar")
+
+## How many segments the speed bar is cut into.
+##
+## Segmented rather than continuous, following Elite Dangerous: discrete
+## blocks are readable at a glance and in peripheral vision, where a smoothly
+## sliding bar is not. At 640x360 a continuous fill would also be about twenty
+## pixels of gradient, which reads as a smudge.
+@export var speed_segments: int = 12
+
+## Where the gauge's ZERO and FULL ends sit, in screen degrees clockwise from
+## straight up.
+##
+## Wraps the disc's right-hand side, filling upward: zero low and full high,
+## because rising-equals-more is what every physical gauge trains.
+##
+## The full end stops short of the heading arc, which occupies the top
+## arc_screen_span_degrees / 2 either side of vertical. The two share the ring
+## around the disc, so they are placed to abut rather than overlap.
+@export var speed_arc_zero: float = 168.0
+@export var speed_arc_full: float = 62.0
+
+## Radius of the gauge, relative to the disc radius. Just outside the rim, and
+## inside the heading arc, so the instrument reads as concentric bands.
+@export var speed_bar_radius_ratio: float = 1.12
+
+## Metres per world unit, for the readout.
+##
+## The project's scale: the Farragut wreck is 2040 m and 510 units long. The
+## gauge reports metres per second because "18" means nothing to a player and
+## "72 m/s" means something.
+@export var metres_per_unit: float = 4.0
+
+## Half-width of a segment block, in pixels. The block is drawn twice this
+## wide, so 4 gives an 8-pixel column.
+@export var speed_bar_thickness: float = 4.0
 
 @export_group("Colours")
 @export var disc_colour: Color = Color(0.02, 0.04, 0.03, 0.66)
@@ -54,6 +123,10 @@ extends Control
 @export var ship_colour: Color = Color(0.435, 0.812, 0.353)
 @export var drone_colour: Color = Color(0.435, 0.812, 0.353, 0.9)
 @export var fleeing_colour: Color = Color(1.0, 0.42, 0.30)
+
+## The rival hive, in its amber gold. Same palette as its hulls, so a blip on
+## the scope and a ship on screen are recognisably the same faction.
+@export var rival_colour: Color = Color(0.851, 0.643, 0.255)
 @export var rock_colour: Color = Color(0.42, 0.39, 0.34)
 @export var wreck_colour: Color = Color(0.62, 0.62, 0.66, 0.85)
 @export var threat_colour: Color = Color(1.0, 0.35, 0.25)
@@ -136,6 +209,93 @@ func _draw() -> void:
 	_draw_disc()
 	_draw_contacts()
 	_draw_arc()
+	_draw_speed_bar()
+
+
+## A segmented speed gauge wrapping the disc's right-hand side.
+##
+## Reads the ship's actual velocity against its max_speed rather than the
+## thrust input, so it reports what the Matriarch is DOING. Those differ
+## whenever the ship is turning, drifting, or fighting its own damping, and
+## the difference is exactly what a pilot needs to see.
+func _draw_speed_bar() -> void:
+	if _ship == null or not ("max_speed" in _ship):
+		return
+
+	var ceiling: float = maxf(_ship.max_speed, 0.001)
+	var speed: float = _ship.velocity.length() if "velocity" in _ship else 0.0
+	var fraction: float = clampf(speed / ceiling, 0.0, 1.0)
+
+	var centre: Vector2 = _disc_centre()
+	var radius: float = _disc_radius() * speed_bar_radius_ratio
+	var squash: float = _squash()
+
+	# How far up the gauge the fill has reached, in segments. Fractional: the
+	# leading segment is drawn PARTLY lit rather than switching on all at
+	# once, so acceleration reads as continuous rather than as a ratchet.
+	var filled: float = fraction * float(speed_segments)
+
+	for i in speed_segments:
+		var t0: float = float(i) / float(speed_segments)
+		var t1: float = float(i + 1) / float(speed_segments)
+		var a0: float = deg_to_rad(lerpf(speed_arc_zero, speed_arc_full, t0))
+		var a1: float = deg_to_rad(lerpf(speed_arc_zero, speed_arc_full, t1))
+		# A small gap between segments. signf keeps it a gap rather than an
+		# overlap whichever direction the gauge runs.
+		var gap: float = deg_to_rad(1.2) * signf(a1 - a0)
+		a0 += gap
+		a1 -= gap
+
+		var from: Vector2 = _on_ring(centre, radius, squash, a0)
+		var to: Vector2 = _on_ring(centre, radius, squash, a1)
+
+		# The unlit track is always drawn, so the gauge shows its full range
+		# rather than appearing to shrink as the ship slows.
+		draw_line(from, to, Color(rim_colour, 0.22), speed_bar_thickness)
+
+		var lit: float = clampf(filled - float(i), 0.0, 1.0)
+		if lit <= 0.0:
+			continue
+		# Top fifth warns: at full speed a capital ship is committed, and
+		# turning it takes a while.
+		var colour: Color = ship_colour if t0 < 0.8 else Color(1.0, 0.72, 0.3)
+		draw_line(from, from.lerp(to, lit), colour, speed_bar_thickness)
+
+	_draw_speed_reading(
+		speed, _on_ring(centre, radius, squash, deg_to_rad(speed_arc_full))
+	)
+
+
+## A point on the tilted ring at [param angle], measured clockwise from up.
+##
+## Shared by the gauge and its reading so the two cannot drift apart, which is
+## how the reading ended up beside the wrong end of the bar once already.
+func _on_ring(
+	centre: Vector2, radius: float, squash: float, angle: float
+) -> Vector2:
+	return centre + Vector2(sin(angle) * radius, -cos(angle) * radius * squash)
+
+
+## The numeric speed, placed at the gauge's FULL end.
+##
+## At the top of the bar, where the fill is heading. A reading at the zero end
+## sits where the needle starts rather than where it is going, and it hung
+## below the panel; at the top it reads as the label for the gauge it belongs
+## to. The heading arc is now short enough and far enough out that the two do
+## not meet.
+func _draw_speed_reading(speed: float, at: Vector2) -> void:
+	var label: String = "%d m/s" % roundi(speed * metres_per_unit)
+	var width: float = _font.get_string_size(
+		label, HORIZONTAL_ALIGNMENT_LEFT, -1, 9
+	).x
+	# Clamped to the panel, so a three-digit reading grows leftward into empty
+	# space rather than off the side of the control -- which would not be
+	# clipped, because a Control does not clip its own drawing.
+	var x: float = clampf(at.x - width * 0.5, 2.0, size.x - width - 2.0)
+	draw_string(
+		_font, Vector2(x, at.y - 5.0), label,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, 9, ship_colour
+	)
 
 
 func _draw_disc() -> void:
@@ -217,8 +377,17 @@ func _draw_wreck() -> void:
 	draw_polyline(corners, wreck_colour, 1.0)
 
 
+## Both swarms, so the scope answers "where is the enemy" as well as "where
+## are mine". A radar that only showed your own units would be a formation
+## display, not a radar.
 func _draw_drones() -> void:
-	var swarms: Array = get_tree().get_nodes_in_group("swarm_" + str(allegiance))
+	_draw_swarm(allegiance, drone_colour)
+	_draw_swarm(1 - allegiance, rival_colour)
+	_draw_rival_ship()
+
+
+func _draw_swarm(side: int, colour: Color) -> void:
+	var swarms: Array = get_tree().get_nodes_in_group("swarm_" + str(side))
 	if swarms.is_empty():
 		return
 	var swarm: Swarm = swarms[0] as Swarm
@@ -228,15 +397,31 @@ func _draw_drones() -> void:
 		if drone == null:
 			continue
 		var machine: Node = drone.get_node_or_null("StateMachine")
+		# Only friendly units report their state. Knowing an enemy drone is
+		# fleeing is information the player has no way to see in the world,
+		# and the radar should not know more than the ships do.
 		var fleeing: bool = (
-			machine != null
+			side == allegiance
+			and machine != null
 			and machine.current_state != null
 			and machine.current_state.name == "Flee"
 		)
 		draw_circle(
 			_to_disc(drone.global_position), 1.5,
-			fleeing_colour if fleeing else drone_colour
+			fleeing_colour if fleeing else colour
 		)
+
+
+## The enemy Matriarch, as a larger blip. It is the thing that ends the match,
+## so it should not look like one more drone.
+func _draw_rival_ship() -> void:
+	for node in get_tree().get_nodes_in_group("commander_" + str(1 - allegiance)):
+		var ship: Node3D = node as Node3D
+		if ship == null:
+			continue
+		var at: Vector2 = _to_disc(ship.global_position)
+		draw_circle(at, 3.5, rival_colour)
+		draw_circle(at, 5.5, rival_colour, false, 1.0)
 
 
 ## The player, as a triangle pointing along the ship's heading.
@@ -279,11 +464,11 @@ func _arc_point(bearing: float, radius_scale: float = 1.0) -> Vector2:
 	var relative: float = fposmod(bearing - _camera_heading() + 180.0, 360.0) - 180.0
 	if absf(relative) > arc_span_degrees * 0.5:
 		return Vector2.INF
-	# Map the heading offset onto an arc over the top of the disc: -90 degrees
-	# of screen angle is straight up, so the centre of the arc sits above the
-	# disc's centre and the ends sweep down its sides.
+	# Map the heading offset onto an arc over the top of the disc. -90 degrees
+	# of screen angle is straight up, so the band centres above the disc and
+	# its ends sweep down either side by half the screen span.
 	var t: float = relative / arc_span_degrees
-	var screen_angle: float = -PI * 0.5 + t * PI
+	var screen_angle: float = -PI * 0.5 + t * deg_to_rad(arc_screen_span_degrees)
 	var radius: float = _disc_radius() * arc_radius_ratio * radius_scale
 	return _disc_centre() + Vector2(
 		cos(screen_angle) * radius,
@@ -323,7 +508,10 @@ func _draw_arc() -> void:
 		var width: float = _font.get_string_size(
 			label, HORIZONTAL_ALIGNMENT_LEFT, -1, 8
 		).x
-		var text_at: Vector2 = _arc_point(bearing, 1.22)
+		# Only slightly beyond the ticks. The arc itself now sits well out from
+		# the disc, so a large further offset would push the labels outside
+		# the control.
+		var text_at: Vector2 = _arc_point(bearing, 1.12)
 		if text_at != Vector2.INF:
 			draw_string(
 				_font, text_at - Vector2(width * 0.5, 0.0), label,
