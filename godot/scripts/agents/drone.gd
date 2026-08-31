@@ -28,18 +28,17 @@ signal died(unit: Drone)
 
 ## Speed ceiling in units per second. Behaviours read this to size the
 ## velocity they ask for, so it is an input, not a readout.
-## Top speed, in world units per second.
 ##
-## 1.5x the Matriarch's 18. A drone that cannot outrun the ship it escorts can
+## 1.5x the Matriarch's 36. A drone that cannot outrun the ship it escorts can
 ## never break off and come back, so the attack runs in [EngageState] depend
 ## on this margin -- and a swarm that moves visibly faster than the capital
 ## ship is what makes it read as a cloud of small things rather than a formation
 ## of little ships.
-@export var max_speed: float = 27.0
+@export var max_speed: float = 54.0
 
 ## Ceiling on the summed steering force. Without it, several behaviours pulling
 ## the same way produce unbounded acceleration and the motion reads as robotic.
-@export var max_force: float = 20.0
+@export var max_force: float = 40.0
 
 ## How far the unit rolls into a turn. 0 keeps it upright.
 @export var banking: float = 0.1
@@ -48,10 +47,34 @@ signal died(unit: Drone)
 ## makes the unit coast to rest when the forces vanish.
 @export var damping: float = 0.1
 
+## Widest angle, in degrees, between the drone's nose and the force it may
+## apply. 180 removes the limit.
+##
+## A drone has no side thrusters. Without this it accelerates in any direction
+## regardless of which way the hull points, which lets it sidle and reverse --
+## and a unit that can sidle never needs to turn, so it never needs an attack
+## RUN. It just holds station off its target and shoots.
+##
+## At 90 degrees the drone must turn to go somewhere new, and turning while
+## moving describes an arc. That arc is the hit-and-run: in, past, around, back.
+## The tactic is not scripted anywhere -- it falls out of taking away the
+## ability to fly sideways.
+@export_range(10.0, 180.0) var max_steer_angle: float = 90.0
+
 @export_group("Combat")
 
 ## Current health. Corrosion and enemy fire reduce it.
 @export var health: float = 100.0
+
+## Health at spawn, so damage can be reported as a fraction.
+var max_health: float = 0.0
+
+## Detonate when killed, damaging whatever is nearby.
+@export var explodes_on_death: bool = true
+
+## Scales the blast a death produces. Below 1 for a chain that fizzles out,
+## above 1 for one that cascades through a packed swarm.
+@export_range(0.2, 3.0) var death_blast_scale: float = 1.0
 
 @export_group("Harvesting")
 
@@ -94,6 +117,7 @@ var count_neighbours: bool = false
 
 
 func _ready() -> void:
+	max_health = health
 	_collect_behaviours()
 	if swarm == null:
 		# The Godot editor can silently delete instance-override properties
@@ -166,11 +190,49 @@ func calculate_force() -> Vector3:
 	return total_force
 
 
+## Clamp a force into the cone the drone can actually thrust through.
+##
+## Rotated onto the edge of the cone rather than projected onto it. Projection
+## collapses to zero for a force at exactly 90 degrees, so a drone asked to go
+## directly sideways would simply stop; rotating keeps the full magnitude and
+## turns it into the sharpest turn the drone can make, which is what a pilot
+## would do.
+##
+## BRAKING IS EXEMPT. A force opposing the drone's own velocity is slowing it
+## down, and a unit that cannot brake cannot stop -- it would circle its target
+## forever unable to shed speed. Reverse thrust is allowed precisely because it
+## is the one backwards force that is not a way of avoiding turning.
+func _limit_to_steering_arc(desired: Vector3) -> Vector3:
+	if max_steer_angle >= 180.0 or desired.length_squared() < 0.0001:
+		return desired
+
+	# +Z is the nose in this codebase, not Vector3.FORWARD.
+	var nose: Vector3 = global_basis.z
+	nose.y = 0.0
+	if nose.length_squared() < 0.0001:
+		return desired
+	nose = nose.normalized()
+
+	var direction: Vector3 = desired.normalized()
+	var limit: float = deg_to_rad(max_steer_angle)
+	var offset: float = nose.signed_angle_to(direction, Vector3.UP)
+	if absf(offset) <= limit:
+		return desired
+
+	# Braking: the force opposes travel, so it is shedding speed rather than
+	# dodging a turn.
+	if velocity.length_squared() > 0.01 and desired.dot(velocity) < 0.0:
+		return desired
+
+	return nose.rotated(Vector3.UP, clampf(offset, -limit, limit)) * desired.length()
+
+
 # --- Integration (fixed-timestep plumbing) --------------------------------
 
 func _physics_process(delta: float) -> void:
 	var new_force: Vector3 = calculate_force()
 	new_force.y = 0.0
+	new_force = _limit_to_steering_arc(new_force)
 
 	# Low-pass filter the applied force so it chases the newly computed force
 	# rather than snapping to it. Removes jitter when a behaviour switches on
@@ -252,8 +314,22 @@ func unload_payload() -> float:
 
 func take_damage(amount: float) -> void:
 	health -= amount
-	if health <= 0.0:
-		if swarm != null:
-			swarm.deregister(self)
-		died.emit(self)
-		queue_free()
+	if health > 0.0:
+		return
+
+	# Every death is a detonation. A swarm unit is a flying charge, so it going
+	# up when killed is what it was always going to do -- and it has a real
+	# consequence: a tightly packed swarm is dangerous to ITSELF, because one
+	# loss can take its neighbours with it. Spacing stops being free.
+	#
+	# Spawned BEFORE deregistering and freeing, so the position is still valid,
+	# but the blast is dealt from the Explosion's own _ready on the next frame
+	# -- by which point this drone is already out of the register and cannot be
+	# caught in its own blast.
+	if explodes_on_death:
+		Explosion.burst(get_tree(), global_position, death_blast_scale)
+
+	if swarm != null:
+		swarm.deregister(self)
+	died.emit(self)
+	queue_free()

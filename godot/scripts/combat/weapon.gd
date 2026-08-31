@@ -18,8 +18,26 @@ signal fired(at: Node3D)
 ## can carry a mount with nothing loaded.
 @export var projectile_scene: PackedScene
 
-## Seconds between shots.
+## Seconds between shots, or between bursts when [member burst_count] is > 1.
 @export var cooldown: float = 0.55
+
+## How many shots leave the mount per trigger pull.
+##
+## 1 is a single shot. Above that the weapon fires a BURST: that many rounds
+## spaced by [member burst_interval], then the full cooldown before the next
+## burst is allowed.
+##
+## A burst carries information a stream of evenly-spaced shots does not. Three
+## rounds arriving together read as one deliberate attack, and the silence
+## afterwards is what makes the rhythm legible -- the player can hear and see
+## when they are between bursts and therefore vulnerable.
+@export_range(1, 10) var burst_count: int = 1
+
+## Seconds between the rounds WITHIN a burst.
+##
+## Much shorter than the cooldown, or the burst stops reading as one event and
+## becomes three separate shots.
+@export var burst_interval: float = 0.09
 
 ## Damage per shot, passed to the projectile.
 @export var damage: float = 8.0
@@ -31,6 +49,24 @@ signal fired(at: Node3D)
 ## hull that fired it and immediately register a hit on its own ship.
 @export var muzzle_offset: float = 2.5
 
+## Fire along the agent's nose rather than at the target.
+##
+## A drone's weapon is bolted to its hull: it cannot swivel, so the drone has
+## to be POINTED at what it wants to hit. That single constraint is what makes
+## the attack run a tactic rather than a decoration -- a gimballed drone can
+## orbit at a comfortable distance and keep shooting forever, where a fixed
+## mount only bears during the run-in and goes dark on the way out.
+##
+## The commander's weapon leaves this off. A capital ship carries turrets, and
+## its pilot is already constrained by [PlayerGunner]'s own firing arc.
+@export var fixed_mount: bool = false
+
+## Half-angle the nose must be within for a fixed mount to fire, in degrees.
+##
+## Narrow. A wide arc would let a drone shoot while merely facing the general
+## direction, which brings back the orbiting it exists to prevent.
+@export_range(1.0, 90.0) var mount_arc_degrees: float = 18.0
+
 @export_group("Debug")
 
 ## Draw a line to the current target when firing.
@@ -41,6 +77,15 @@ var agent: Node3D
 
 ## Seconds until the next shot is allowed.
 var _cooldown_left: float = 0.0
+
+## Rounds still owed on the burst in progress.
+var _burst_left: int = 0
+
+## The target the burst was started against.
+##
+## Held so the remaining rounds go where the burst was aimed even if the
+## caller stops asking -- a burst is one committed action, not three decisions.
+var _burst_target: Node3D
 
 ## Kept only so the gizmo can draw what was last shot at.
 var _last_target: Node3D
@@ -54,6 +99,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_cooldown_left = maxf(_cooldown_left - delta, 0.0)
+	_continue_burst()
 	if draw_gizmos and _last_target != null and is_instance_valid(_last_target):
 		DebugDraw3D.draw_line(
 			global_position, _last_target.global_position, Color(1.0, 0.55, 0.25)
@@ -96,6 +142,21 @@ func fire_at(target: Node3D) -> bool:
 		return false
 	direction = direction.normalized()
 
+	if fixed_mount:
+		# +Z is the model's nose in this codebase, not Vector3.FORWARD.
+		var nose: Vector3 = agent.global_basis.z
+		nose.y = 0.0
+		if nose.length_squared() < 0.0001:
+			return false
+		nose = nose.normalized()
+		# Refuse the shot unless the hull is already pointed at the target.
+		if rad_to_deg(nose.angle_to(direction)) > mount_arc_degrees:
+			return false
+		# And fire down the nose rather than at the target: a fixed gun cannot
+		# lead or correct, so a shot taken slightly off-axis MISSES. That is
+		# the honest behaviour, and it is what rewards a well-aimed pass.
+		direction = nose
+
 	# Added to the scene root rather than to the firing agent: a shot parented
 	# to its shooter would inherit the shooter's motion and drag along behind
 	# it instead of flying straight.
@@ -105,7 +166,33 @@ func fire_at(target: Node3D) -> bool:
 	# BEHIND the shot to point it forward. Same inversion as Drone and Ship.
 	projectile.look_at(projectile.global_position - direction, Vector3.UP)
 
-	_cooldown_left = cooldown
+	# A burst spends its short interval between rounds and only pays the full
+	# cooldown once the last round has left.
+	if _burst_left > 0:
+		_burst_left -= 1
+		_cooldown_left = burst_interval if _burst_left > 0 else cooldown
+	else:
+		_burst_left = maxi(burst_count - 1, 0)
+		_burst_target = target
+		_cooldown_left = burst_interval if _burst_left > 0 else cooldown
+
 	_last_target = target
 	fired.emit(target)
 	return true
+
+
+## Continue a burst already in progress, without the caller having to ask.
+##
+## Once a burst starts it finishes on its own, so a player who taps fire still
+## gets all three rounds: a burst is one committed action, not a test of how
+## long they can hold the key.
+func _continue_burst() -> void:
+	if _burst_left <= 0 or _cooldown_left > 0.0:
+		return
+	if _burst_target == null or not is_instance_valid(_burst_target):
+		# The target died mid-burst. Stop rather than firing at nothing, and
+		# pay the full cooldown so a dead target is not a free reload.
+		_burst_left = 0
+		_cooldown_left = cooldown
+		return
+	fire_at(_burst_target)

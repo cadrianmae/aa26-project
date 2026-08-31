@@ -24,7 +24,7 @@ signal hit(target: Node3D, amount: float)
 @export var damage: float = 8.0
 
 ## Units per second.
-@export var speed: float = 90.0
+@export var speed: float = 180.0
 
 ## Seconds before the shot gives up and frees itself.
 @export var lifetime: float = 2.5
@@ -34,7 +34,83 @@ signal hit(target: Node3D, amount: float)
 ## would let shots tunnel straight through a drone between frames.
 @export var hit_radius: float = 2.2
 
+## Core colour of the bolt: orange-red, the hottest part of the shot.
+@export var core_colour: Color = Color(1.0, 0.30, 0.10)
+
+## The caustic green the bolt glows with.
+##
+## The two colours do different jobs. Green is the emission, so it blooms
+## OUTWARD past the geometry and is what carries the shot at 640x360 against a
+## near-black belt. Orange-red is the albedo, so it stays tight in the middle
+## -- and it only reads as heat because there is green around it.
+@export var glow_colour: Color = Color(0.42, 1.0, 0.22)
+
+## How hard the bolt blooms. The scene Environment has glow enabled, so an
+## emission above 1.0 spills light past the geometry and a shot two pixels wide
+## still reads as a bolt rather than a dot.
+@export var glow_energy: float = 4.0
+
 var _age: float = 0.0
+
+## The ribbon left behind the bolt.
+var _trail: TrailRibbon
+
+
+## Replace the hull's lit material with a self-lit one.
+##
+## The hull shader modulates by the angle to the sun, which is right for a
+## ship and wrong for a bolt: a projectile spinning past the camera would
+## flicker as its facets turned. A shot emits its own light, so it should not
+## be lit at all.
+##
+## Runs in _ready on the parent, which Godot calls AFTER its children, so this
+## reliably overwrites the material Hull assigns to itself.
+func _ready() -> void:
+	var hull: MeshInstance3D = get_node_or_null("Hull") as MeshInstance3D
+	if hull == null:
+		return
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.albedo_color = core_colour
+	material.emission_enabled = true
+	material.emission = glow_colour
+	material.emission_energy_multiplier = glow_energy
+	# Drawn over the belt rather than depth-sorted against it: a bolt passing
+	# behind a rock should still be visible as tracer fire.
+	material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	hull.material_override = material
+
+	_build_trail()
+	_build_glow()
+
+
+## A tight ribbon behind the bolt.
+##
+## Narrower and much shorter than a Thruster's. An engine exhaust should
+## billow; a bolt is a few pixels wide at 640x360, and a wide ribbon would
+## swallow the shot inside its own trail. Few points and a thin width keeps it
+## a line the eye can follow back to whoever fired.
+func _build_trail() -> void:
+	_trail = TrailRibbon.new()
+	_trail.name = "Trail"
+	_trail.points = 10
+	_trail.width = 0.16
+	_trail.minimum_step = 0.6
+	_trail.head_colour = core_colour
+	_trail.tail_colour = Color(glow_colour.r, glow_colour.g, glow_colour.b, 0.0)
+	add_child(_trail)
+
+
+## A small light travelling with the bolt, so it lights what it passes.
+func _build_glow() -> void:
+	var light := OmniLight3D.new()
+	light.name = "Glow"
+	light.light_color = core_colour
+	light.light_energy = 2.0
+	# Small. A wide light on a fast-moving shot sweeps the whole belt and
+	# reads as the scene flickering rather than as a bolt going past.
+	light.omni_range = 5.0
+	add_child(light)
 
 
 func _physics_process(delta: float) -> void:
@@ -47,6 +123,9 @@ func _physics_process(delta: float) -> void:
 	# and would send every shot out of the back of the ship that fired it.
 	var step: Vector3 = global_transform.basis.z.normalized() * speed * delta
 	global_position += step
+
+	if _trail != null:
+		_trail.advance(global_position, true)
 
 	var target: Node3D = _first_hit()
 	if target == null:
