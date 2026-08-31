@@ -31,6 +31,9 @@ var ship: Ship
 ## The weapon being fired. Resolved from the parent, never wired in the scene.
 var weapon: Weapon
 
+## The player's target selection, when the ship carries one.
+var targeting: Targeting
+
 
 func _ready() -> void:
 	ship = get_parent() as Ship
@@ -43,6 +46,7 @@ func _ready() -> void:
 		set_physics_process(false)
 		return
 	weapon = ship.get_node_or_null("Weapon") as Weapon
+	targeting = ship.get_node_or_null("Targeting") as Targeting
 
 
 func _physics_process(_delta: float) -> void:
@@ -55,11 +59,18 @@ func _physics_process(_delta: float) -> void:
 
 ## The enemy this shot should go to, or null when nothing is worth shooting.
 ##
-## Nearest hostile inside the weapon's range AND inside the firing arc. Range
-## is the weapon's own business, so it is asked rather than duplicated here.
+## A deliberate selection wins over proximity: if the player has targeted
+## something and it can actually be hit, that is what gets shot, even with a
+## closer contact in the arc. Otherwise this falls back to the nearest hostile
+## in range and in arc, so the weapon still works with nothing selected.
 func choose_target() -> Node3D:
 	if ship == null or weapon == null:
 		return null
+
+	if targeting != null and targeting.current != null:
+		var chosen: Node3D = targeting.current
+		if weapon.in_range(chosen) and _within_arc(chosen):
+			return chosen
 
 	var best: Node3D = null
 	var best_distance: float = INF
