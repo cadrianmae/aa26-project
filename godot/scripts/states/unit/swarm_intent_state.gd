@@ -12,6 +12,26 @@ extends State
 ## The state to enter when a threat is in range.
 @export var flee_state_name: String = "Flee"
 
+## The state a dying unit enters to spend itself.
+@export var detonate_state_name: String = "Detonate"
+
+## Health fraction below which a unit will consider detonating.
+##
+## A unit this hurt is unlikely to survive the fight it is in, so the question
+## stops being "how do I get out" and becomes "what can I take with me".
+@export_range(0.0, 1.0) var detonate_health_fraction: float = 0.3
+
+## How close an enemy must be for detonation to be worth it.
+##
+## Deliberately short. A dying unit that charges across the map to detonate
+## reads as scripted; one that blows up on the thing already killing it reads
+## as a decision. It also has to be reachable before the unit dies on the way.
+@export var detonate_radius: float = 20.0
+
+## Starting health, captured on first think so "nearly dead" is a proportion
+## rather than a hard-coded number.
+var _full_health: float = 0.0
+
 ## Which state each swarm intent asks a unit to enter.
 ##
 ## A lookup rather than a match statement, so adding an order is one entry
@@ -56,7 +76,24 @@ func _think() -> void:
 	if unit == null or machine == null or unit.swarm == null:
 		return
 
-	if machine.current_state != null and machine.current_state.name == flee_state_name:
+	if _full_health <= 0.0:
+		_full_health = unit.health
+
+	# Both terminal-ish: once committed, neither is reconsidered from here.
+	if machine.current_state != null and (
+		machine.current_state.name == flee_state_name
+		or machine.current_state.name == detonate_state_name
+	):
+		return
+
+	# Checked BEFORE the flee reflex, and that ordering is the whole design.
+	# Fleeing is what a unit does when it can still be saved; a unit this hurt
+	# with an enemy already on top of it cannot be, and running only means
+	# dying a few seconds later having achieved nothing. Detonation is not an
+	# order -- the swarm cannot be told to spend itself -- so it belongs here,
+	# in the tier a unit reasons about ITSELF in.
+	if _should_detonate():
+		machine.change_state_named(detonate_state_name)
 		return
 
 	var next_state: State = null
@@ -89,3 +126,43 @@ func _think() -> void:
 	machine.change_state(next_state)
 
 	return
+
+
+## Whether this unit should spend itself now.
+##
+## Two conditions, both required: nearly dead, and an enemy close enough to be
+## worth the trade. Either alone is wrong -- a healthy unit beside an enemy
+## should fight it, and a dying unit alone should run.
+func _should_detonate() -> bool:
+	if unit == null or _full_health <= 0.0:
+		return false
+	if unit.health / _full_health > detonate_health_fraction:
+		return false
+	return _nearest_enemy_distance() <= detonate_radius
+
+
+## Distance to the closest hostile, or INF when the field is clear.
+func _nearest_enemy_distance() -> float:
+	var enemy: int = 1 - unit.allegiance
+	var closest: float = INF
+
+	for node in get_tree().get_nodes_in_group("swarm_" + str(enemy)):
+		var swarm: Swarm = node as Swarm
+		if swarm == null:
+			continue
+		for drone in swarm.units:
+			if drone == null or not is_instance_valid(drone):
+				continue
+			closest = minf(
+				closest, unit.global_position.distance_to(drone.global_position)
+			)
+
+	for node in get_tree().get_nodes_in_group("commander_" + str(enemy)):
+		var ship: Node3D = node as Node3D
+		if ship == null or not is_instance_valid(ship):
+			continue
+		closest = minf(
+			closest, unit.global_position.distance_to(ship.global_position)
+		)
+
+	return closest
