@@ -8,6 +8,7 @@
 [ext_resource type="PackedScene" path="res://scenes/combat/projectile.tscn" id="6_projectile"]
 [ext_resource type="Script" path="res://scripts/agents/hatchery.gd" id="7_hatchery"]
 [ext_resource type="PackedScene" path="res://scenes/units/drone.tscn" id="8_drone"]
+[ext_resource type="Script" path="res://scripts/steering/arrive_behaviour.gd" id="9_arrive"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_3h2om"]
 size = Vector3(2.4, 0.6, 4)
@@ -28,6 +29,16 @@ shape = SubResource("BoxShape3D_3h2om")
 
 [node name="PlayerSteering" type="Node" parent="."]
 script = ExtResource("3_st06i")
+
+[node name="MoveTarget" type="Node3D" parent="."]
+top_level = true
+
+[node name="CommanderArrive" type="Node" parent="."]
+script = ExtResource("9_arrive")
+enabled = false
+weight = 1.0
+slowing_radius = 60.0
+target = NodePath("../MoveTarget")
 
 [node name="SwarmCoordinator" type="Node" parent="."]
 script = ExtResource("4_coord")

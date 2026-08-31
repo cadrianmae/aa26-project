@@ -61,6 +61,18 @@ var swarm: Swarm
 var hatchery: Hatchery
 var ship: Ship
 
+## Where the rival commander is currently steering.
+##
+## A world-space marker rather than a position handed to the behaviour,
+## because [ArriveBehaviour] targets a [Node3D] -- the same shape the player's
+## rally marker uses.
+var move_marker: Node3D
+
+## The rival's own steering. Disabled in the scene, because the player's
+## commander instances the SAME scene and must not be steered by anything but
+## the player.
+var arrive: SteeringBehaviour
+
 ## The commander's own ship health when first seen, so "hurt" is a proportion
 ## rather than a hard-coded number.
 var full_health: float = 0.0
@@ -117,6 +129,13 @@ func _process(delta: float) -> void:
 		print("[CommanderAI %d] " % allegiance + ", ".join(report))
 
 	var intent: Swarm.Intent = decide()
+
+	# Moved every decision, even when the intent has not changed: the world
+	# has, and a commander that only re-steers on a change of mind would sit
+	# still while its barnacle was stripped.
+	if move_marker != null:
+		move_marker.global_position = move_destination(intent)
+
 	if intent == current_intent:
 		return
 	current_intent = intent
@@ -139,6 +158,20 @@ func _resolve() -> void:
 		) as Ship
 	if ship != null and full_health <= 0.0:
 		full_health = ship.health
+	if ship != null and move_marker == null:
+		move_marker = ship.get_node_or_null("MoveTarget") as Node3D
+		arrive = ship.get_node_or_null("CommanderArrive") as SteeringBehaviour
+		# Switched on here rather than in the scene: this script only ever
+		# runs on the rival, so enabling it here is what guarantees the
+		# player's identical ship is never steered for them.
+		#
+		# The target is wired here too, for the reason PlayerSteeringBehaviour
+		# gives about its camera: a NodePath written into commander_ship.tscn
+		# arrives as null once the scene is instanced into main.tscn. Assigning
+		# it in code needs no scene wiring and cannot be pruned.
+		if arrive != null:
+			arrive.enabled = true
+			arrive.set("target", move_marker)
 
 
 ## How many drones this hatchery currently has.
@@ -270,3 +303,28 @@ func decide() -> Swarm.Intent:
 	if profile == null:
 		return Swarm.Intent.HOLD
 	return profile.best_intent(gather_inputs(), current_intent) as Swarm.Intent
+
+
+## Where the commander should physically fly, given the intent it just chose.
+##
+## Separate from [method decide] on purpose. The intent says what the hive is
+## doing; this says where the ship has to BE for that to work -- and because
+## the hatchery rides on the ship, those are not the same question. A commander
+## that picks HARVEST but parks a kilometre from the barnacle harvests nothing.
+func move_destination(intent: Swarm.Intent) -> Vector3:
+	if ship == null:
+		return Vector3.ZERO
+
+	match intent:
+		Swarm.Intent.HARVEST:
+			var barnacle: Barnacle = nearest_barnacle()
+			if barnacle != null:
+				return barnacle.global_position
+		Swarm.Intent.ENGAGE:
+			var enemy: Node3D = nearest_enemy()
+			if enemy != null:
+				return enemy.global_position
+		Swarm.Intent.HOLD:
+			return ship.global_position
+
+	return ship.global_position

@@ -55,6 +55,18 @@ var last_force: Vector3 = Vector3.ZERO
 
 func _ready() -> void:
 	super()
+
+	# Both hives instance the SAME commander_ship.tscn, separated only by an
+	# allegiance flag -- which is the point, but it means this node exists on
+	# the rival ship too, reading the same keyboard. The rival mirrored every
+	# move the player made, because it was quite literally taking the player's
+	# input. Only the player's own commander reads input.
+	var ship: Ship = get_parent() as Ship
+	if ship != null and ship.allegiance != 0:
+		enabled = false
+		set_process(false)
+		return
+
 	if camera == null:
 		# The editor silently prunes instance-override properties on nodes
 		# inside an instanced sub-scene (this node lives inside
