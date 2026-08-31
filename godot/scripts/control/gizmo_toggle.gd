@@ -17,11 +17,22 @@
 ## sitting over the top-left of every screenshot.
 extends Node
 
+## Whether the overlays are on when the game starts.
+##
+## Off. Every gizmo in the project defaults to true individually, which is
+## right -- each one should draw when debug drawing is on at all -- but the
+## sum of them is roughly one wire sphere per behaviour per agent, which at
+## forty drones buries the ships completely. Starting from off means the
+## default view is the game, and the forces are one keypress away when the
+## question is what the steering is doing.
+@export var enabled_at_start: bool = false
+
 
 func _ready() -> void:
 	# Process input even while the tree is paused, so the toggle still works
 	# if a later phase adds a pause menu.
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	DebugDrawManager.debug_enabled = enabled_at_start
 
 
 func _unhandled_input(event: InputEvent) -> void:
