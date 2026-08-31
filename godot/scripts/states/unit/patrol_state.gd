@@ -31,7 +31,7 @@ extends State
 ## charging across the belt at the first contact.
 @export var contact_range: float = 90.0
 
-const ACTIVE_BEHAVIOURS: Array = ["Arrive", "Separation", "Alignment"]
+const ACTIVE_BEHAVIOURS: Array = ["Avoid", "Arrive", "Separation", "Alignment"]
 
 ## A node that carries this unit's patrol point. An ArriveBehaviour steers at
 ## a Node3D, so the moving point needs to BE one -- the same reason the rally

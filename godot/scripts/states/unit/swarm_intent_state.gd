@@ -12,6 +12,9 @@ extends State
 ## The state to enter when a threat is in range.
 @export var flee_state_name: String = "Flee"
 
+## Where a HARVEST order sends units when the belt has nothing left in it.
+@export var stripped_belt_state_name: String = "Follow"
+
 ## The state a dying unit enters to spend itself.
 @export var detonate_state_name: String = "Detonate"
 
@@ -116,6 +119,21 @@ func _think() -> void:
 	var permitted: Array = INTENT_PERMITS.get(intent, [])
 	if machine.current_state != null and permitted.has(str(machine.current_state.name)):
 		return
+
+	# A HARVEST order with nothing left to harvest becomes a follow order.
+	#
+	# Decided HERE rather than by permitting Follow under HARVEST. Permitting
+	# it stopped the per-frame thrash between Harvest and Follow, but it also
+	# meant the router would leave a drone in Follow forever -- so one that
+	# briefly failed to find a rock never went back to work. Asking the world
+	# whether any rock exists answers the question once, for the whole swarm,
+	# and a drone returns to harvesting the moment one is available again.
+	if intent == Swarm.Intent.HARVEST:
+		if Barnacle.nearest_to(get_tree(), unit.global_position) == null:
+			var idle: State = machine.state_named(stripped_belt_state_name)
+			if idle != null and machine.current_state != idle:
+				machine.change_state(idle)
+			return
 
 	var next_state_name: String = INTENT_STATES.get(intent, "")
 	next_state = machine.state_named(next_state_name)

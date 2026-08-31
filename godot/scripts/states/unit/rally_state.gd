@@ -17,7 +17,7 @@ extends State
 
 ## The behaviours this state runs. Arrive supplies the order; the flocking pair
 ## keeps the swarm from collapsing into one point on arrival.
-const ACTIVE_BEHAVIOURS: Array = ["Arrive", "Separation", "Alignment"]
+const ACTIVE_BEHAVIOURS: Array = ["Avoid", "Arrive", "Separation", "Alignment"]
 
 
 func _enter() -> void:

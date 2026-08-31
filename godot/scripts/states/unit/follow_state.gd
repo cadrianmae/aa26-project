@@ -7,7 +7,7 @@ extends State
 
 
 func _enter() -> void:
-	use_only(["OffsetPursue", "Separation", "Alignment", "Cohesion"])
+	use_only(["Avoid", "OffsetPursue", "Separation", "Alignment", "Cohesion"])
 
 
 func _think() -> void:

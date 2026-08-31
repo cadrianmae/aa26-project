@@ -31,7 +31,7 @@ extends State
 ## Behaviours this state runs. Separation and Alignment stay on so a dozen
 ## drones converging on one hatchery spread into a queue rather than stacking on
 ## a single point.
-const ACTIVE_BEHAVIOURS: Array = ["ArriveHive", "Separation", "Alignment"]
+const ACTIVE_BEHAVIOURS: Array = ["Avoid", "ArriveHive", "Separation", "Alignment"]
 
 var _hatchery: Hatchery
 

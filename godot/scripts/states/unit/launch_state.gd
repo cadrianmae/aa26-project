@@ -26,7 +26,11 @@ extends State
 ## Only separation and the formation pull: a new unit should spread away from
 ## the others leaving the hatchery at the same moment, but not yet try to hold a
 ## slot it is far too distant to reach.
-const ACTIVE_BEHAVIOURS: Array = ["OffsetPursue", "Separation"]
+# Alignment included so a drone the hatchery has just built leaves matching
+# the heading of the swarm it is joining, rather than setting off on its own
+# vector and having to be pulled into line afterwards. A new unit should look
+# like it belonged to the flock from the moment it appears.
+const ACTIVE_BEHAVIOURS: Array = ["Avoid", "OffsetPursue", "Separation", "Alignment"]
 
 var _hatchery: Hatchery
 var _age: float = 0.0

@@ -50,7 +50,7 @@ extends State
 ## Behaviours this state runs. Separation matters more here than anywhere
 ## else: without it a swarm converging on one enemy collapses into a single
 ## point and stops reading as many units.
-const ACTIVE_BEHAVIOURS: Array = ["Engage", "Separation", "Alignment"]
+const ACTIVE_BEHAVIOURS: Array = ["Avoid", "Engage", "Separation", "Alignment"]
 
 ## Which leg of the attack pattern this drone is on.
 enum Phase { RUN, EXTEND }
@@ -150,6 +150,15 @@ func acquire() -> Node3D:
 		closest = _enemy_commander(enemy)
 
 	target = closest
+	# A new target starts a new attack run. Without this the phase survived
+	# re-acquisition: a drone that killed its target mid-EXTEND kept phase
+	# EXTEND while the seek was repointed at the fresh target, and the EXTEND
+	# exit tests -- far enough from the target, or arrived at the run-out
+	# marker -- could then never come true, because the drone was closing on
+	# the new target rather than leaving the old one. It flew straight in and
+	# sat on top of it, which is exactly the grinding this state was rewritten
+	# to prevent.
+	phase = Phase.RUN
 	_point_seek_at_target()
 	return target
 

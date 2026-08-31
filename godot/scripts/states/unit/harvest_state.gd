@@ -57,7 +57,7 @@ extends State
 
 ## Behaviours this state runs. The flocking pair stays on so drones working
 ## the same rock spread around it instead of stacking on one point.
-const ACTIVE_BEHAVIOURS: Array = ["ArriveBarnacle", "Separation", "Alignment"]
+const ACTIVE_BEHAVIOURS: Array = ["Avoid", "ArriveBarnacle", "Separation", "Alignment"]
 
 ## The Barnacle being worked. Chosen on entry and held, so a drone commits to
 ## one rock rather than re-deciding every frame and oscillating between two
@@ -161,7 +161,11 @@ func update_target_point(delta: float) -> void:
 		var approach: Vector3 = unit.global_position - barnacle.global_position
 		approach.y = 0.0
 		if approach.length_squared() < 0.01:
-			approach = Vector3.FORWARD
+			# The drone's own +Z, not Vector3.FORWARD. Godot's constant is -Z,
+			# which is the back of every model in this codebase -- so the
+			# fallback face would have been chosen on the opposite side from
+			# what "forward" means everywhere else here.
+			approach = unit.global_basis.z
 		_target_point.global_position = (
 			barnacle.global_position + approach.normalized() * surface_offset
 		)
@@ -196,7 +200,25 @@ func _designated() -> Barnacle:
 		var chosen: Barnacle = unit.swarm.harvest_target
 		if chosen != null and is_instance_valid(chosen) and not chosen.is_spent():
 			return chosen
-	return Barnacle.nearest_to(get_tree(), unit.global_position)
+
+	# Nearest to the COMMANDER, not to this drone.
+	#
+	# Nearest-to-self sends a drone to whatever rock happens to be closest to
+	# wherever it drifted, which is regularly one deep in enemy territory --
+	# and once one drone goes, the rest follow it out. Measuring from the
+	# commander keeps the swarm working its own side of the belt, and it is
+	# also the honest reading of the order: the player is asking THE HIVE to
+	# harvest, and the hive is where their ship is.
+	#
+	# It matters more now that the hatchery rides on the ship: a rock far from
+	# the commander is a long round trip and earns almost nothing.
+	var from: Vector3 = unit.global_position
+	var commander: Node3D = get_tree().get_first_node_in_group(
+		"commander_" + str(unit.allegiance)
+	) as Node3D
+	if commander != null and is_instance_valid(commander):
+		from = commander.global_position
+	return Barnacle.nearest_to(get_tree(), from)
 
 
 ## Whether the drone is close enough to draw from [member barnacle].
@@ -229,6 +251,24 @@ func _think() -> void:
 		return
 
 	var delta: float = get_process_delta_time()
+
+	# Follow a change of designation mid-job. A drone commits to one rock so it
+	# does not oscillate between two equidistant ones, but an explicit new
+	# order from the player is not oscillation -- it is the player changing
+	# their mind, and the swarm should answer immediately rather than after
+	# every drone happens to fill up.
+	if unit.swarm != null:
+		var designated: Barnacle = unit.swarm.harvest_target
+		if (
+			designated != null
+			and is_instance_valid(designated)
+			and not designated.is_spent()
+			and designated != barnacle
+		):
+			if barnacle != null and is_instance_valid(barnacle):
+				barnacle.release(unit)
+			barnacle = designated
+			_point_arrive_at_barnacle()
 
 	if barnacle == null or not is_instance_valid(barnacle) or barnacle.is_spent():
 		if not retarget():

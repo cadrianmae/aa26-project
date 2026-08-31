@@ -20,7 +20,7 @@ var return_state: State = null
 
 func _enter() -> void:
 	return_state = machine.state_named(return_state_name)
-	use_only(["Flee", "Separation"])
+	use_only(["Avoid", "Flee", "Separation"])
 
 
 ## Return to [member return_state_name] once the threat is far enough away.

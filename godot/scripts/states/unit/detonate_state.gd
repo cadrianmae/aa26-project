@@ -29,9 +29,10 @@ extends State
 ## cannot close does not sit armed forever.
 @export var fuse_seconds: float = 6.0
 
-## Only Separation stays on: the unit is committed, and cohesion pulling it
-## back toward the flock would fight the run-in.
-const ACTIVE_BEHAVIOURS: Array = ["Engage", "Separation"]
+## Separation and obstacle avoidance only: the unit is committed, and cohesion
+## pulling it back toward the flock would fight the run-in. Avoid stays because
+## a unit that flies into a rock on the way to its target has wasted itself.
+const ACTIVE_BEHAVIOURS: Array = ["Avoid", "Engage", "Separation"]
 
 ## What it is diving at.
 var target: Node3D
