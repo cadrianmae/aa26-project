@@ -41,7 +41,7 @@ extends Node3D
 ## Change this to re-roll the entire belt.
 @export var seed_value: int = 20260830
 
-## Neutral grey-brown: asteroids belong to no hive, and the palette keeps them
+## Neutral grey-brown: asteroids belong to no hatchery, and the palette keeps them
 ## outside the green/gold faction range so they can never be misread as units.
 @export var tint: Color = Color(0.42, 0.39, 0.34)
 
@@ -55,7 +55,7 @@ extends Node3D
 ## trips over.
 @export var barnacle_count: int = 9
 
-## Alloys in each Barnacle. The hive's drone_cost is 25, so one full Barnacle
+## Alloys in each Barnacle. The hatchery's drone_cost is 25, so one full Barnacle
 ## is worth roughly five drones.
 @export var barnacle_reserve: float = 120.0
 
@@ -97,6 +97,7 @@ func _scatter() -> void:
 		rock.scale = Vector3.ONE * rng.randf_range(min_scale, max_scale)
 
 		_tint(rock)
+		_add_collision(rock)
 		add_child(rock)
 		asteroids.append(rock)
 
@@ -138,9 +139,41 @@ func _grow_barnacles() -> void:
 		# "Condition !is_inside_tree() is true", so the barnacle would land at
 		# the origin instead of on its rock.
 		rock.add_child(barnacle)
-		# Just above the rock's surface, on the movement plane the drones fly.
-		barnacle.global_position = rock.global_position + Vector3(0.0, rock.scale.y, 0.0)
+		# On the movement plane, y = 0, whatever height its rock drifted to.
+		# The game is played on a plane: a Barnacle 18 units above it is one
+		# the swarm has to climb to reach, and the steering forces have their
+		# Y zeroed, so it could never get there at all.
+		barnacle.global_position = Vector3(
+			rock.global_position.x, 0.0, rock.global_position.z
+		)
 		barnacles.append(barnacle)
+
+
+## Give a placed rock a solid body, so ships and drones cannot fly through it.
+##
+## A sphere rather than the mesh's true shape. A trimesh collider for forty
+## 80-triangle rocks is a lot of broad-phase work for a game already running
+## a spatial hash and steering for fifty agents every frame, and at 640x360 a
+## drone brushing past a lump is not distinguishable from a drone brushing
+## past a sphere the same size.
+##
+## Layer 1 is the world layer, which is the only layer drones and ships mask
+## against -- so rocks stop them while drones still pass through each other.
+func _add_collision(rock: Node3D) -> void:
+	var body: StaticBody3D = StaticBody3D.new()
+	body.name = "Body"
+	body.collision_layer = 1
+	body.collision_mask = 0
+
+	var shape: CollisionShape3D = CollisionShape3D.new()
+	var sphere: SphereShape3D = SphereShape3D.new()
+	# The model is roughly 1.15 units in radius before the instance is scaled;
+	# the shape is a child so it inherits that scale.
+	sphere.radius = 1.05
+	shape.shape = sphere
+
+	body.add_child(shape)
+	rock.add_child(body)
 
 
 ## A position in the belt annulus: inside the field, outside the keep-out.

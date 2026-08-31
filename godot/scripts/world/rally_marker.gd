@@ -16,7 +16,7 @@ class_name RallyMarker
 extends Node3D
 
 ## Group naming convention, matching Swarm's own "swarm_<allegiance>" groups.
-## One marker per side, so the enemy hive can rally independently.
+## One marker per side, so the enemy hatchery can rally independently.
 const GROUP_PREFIX: String = "rally_marker_"
 
 ## Which side this marker belongs to.

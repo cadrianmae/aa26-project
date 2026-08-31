@@ -31,7 +31,33 @@ const GROUP: String = "barnacles"
 @export var initial_reserve: float = 120.0
 
 ## How close a drone must be to draw from it.
-@export var harvest_radius: float = 14.0
+##
+## Tight on purpose. The Barnacle's own hull is about 3.5 units across, so at
+## 6 a drone has to sit against the rock to work it -- which is the point: the
+## player should SEE a drone harvesting, not see it hovering vaguely nearby
+## while a number goes up. A generous radius makes the mechanic invisible.
+@export var harvest_radius: float = 6.0
+
+## How long a claim survives without being renewed, in seconds.
+##
+## A claim is a LEASE, not a lock. A drone that dies mid-harvest, or is
+## scattered by the flee reflex, never gets to release its claim -- and a
+## Barnacle held by a drone that no longer exists would be locked out of the
+## economy permanently. Renewing on every draw and expiring otherwise means a
+## claim cleans itself up without the drone having to survive to do it.
+@export var claim_timeout: float = 1.5
+
+## The drone currently working this Barnacle, or null when it is free.
+##
+## One at a time, on purpose. A queue forms around a busy Barnacle with
+## nothing coordinating it: each waiting drone simply cannot claim, so it
+## holds station until the one in front leaves. That bottleneck is also what
+## makes a bigger swarm spread ACROSS the belt rather than just harvesting one
+## rock faster.
+var occupant: Drone
+
+## Seconds left on the current claim.
+var _lease: float = 0.0
 
 @export_group("Debug")
 
@@ -73,6 +99,40 @@ func is_spent() -> bool:
 	return reserve <= 0.0
 
 
+## Whether no drone currently holds this Barnacle.
+##
+## A claim held by a freed drone counts as free: the lease will expire anyway,
+## but checking validity here means the next drone does not have to wait out
+## the timeout for a claimant that no longer exists.
+func is_free() -> bool:
+	return occupant == null or not is_instance_valid(occupant)
+
+
+## Try to take this Barnacle. Returns whether [param drone] now holds it.
+##
+## Re-claiming when already the occupant succeeds and renews the lease, so a
+## working drone calls this every frame without special-casing the first one.
+func claim(drone: Drone) -> bool:
+	if drone == null:
+		return false
+	if not is_free() and occupant != drone:
+		return false
+	occupant = drone
+	_lease = claim_timeout
+	return true
+
+
+## Give up the claim, if [param drone] is the one holding it.
+##
+## Checks the holder rather than clearing unconditionally: a drone that was
+## queued behind another and gave up would otherwise evict the drone actually
+## working the rock.
+func release(drone: Drone) -> void:
+	if occupant == drone:
+		occupant = null
+		_lease = 0.0
+
+
 ## How full this Barnacle is, from 0.0 to 1.0.
 func fullness() -> float:
 	if initial_reserve <= 0.0:
@@ -102,7 +162,9 @@ static func nearest_to(tree: SceneTree, point: Vector3) -> Barnacle:
 	return best
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	_expire_claim(delta)
+
 	if not draw_gizmos:
 		return
 	# Green while it holds alloys, fading toward grey as it empties, so a
@@ -111,3 +173,25 @@ func _process(_delta: float) -> void:
 		Color(0.62, 0.82, 0.23), fullness()
 	)
 	DebugDraw3D.draw_sphere(global_position, harvest_radius, colour)
+	# A line to whoever is working it, so a queue is visible as a queue rather
+	# than as a cluster of drones milling about.
+	if not is_free():
+		DebugDraw3D.draw_line(
+			global_position, occupant.global_position, Color(0.62, 0.82, 0.23)
+		)
+
+
+## Count the lease down and drop the claim when it runs out.
+##
+## This is what a drone killed or scattered mid-harvest relies on: nothing
+## releases its claim, so the Barnacle has to notice it stopped renewing.
+func _expire_claim(delta: float) -> void:
+	if occupant == null:
+		return
+	if not is_instance_valid(occupant):
+		occupant = null
+		_lease = 0.0
+		return
+	_lease -= delta
+	if _lease <= 0.0:
+		occupant = null
