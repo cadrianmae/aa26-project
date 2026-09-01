@@ -56,6 +56,12 @@ const _SILENCE_DB: float = -60.0
 ## fade still in flight rather than fighting it for control of volume_db.
 var _fade_tween: Tween
 
+## Seconds since the track last changed, for the minimum hold.
+var _since_change: float = 999.0
+
+## Seconds since the last heartbeat line.
+var _since_log: float = 0.0
+
 @export_group("Situation")
 
 ## Which swarm's situation the score follows.
@@ -65,6 +71,46 @@ var _fade_tween: Tween
 ## situation, not to the frame: sampling at 60 Hz would let one unit briefly
 ## entering Flee flip the track and flip it back, which reads as a glitch.
 @export var sample_interval: float = 0.5
+
+## Least time a track must play before another may replace it, in seconds.
+##
+## The phase is read from what the swarm is DOING, and that changes constantly
+## -- a single drone entering Flee for one second was enough to swing the whole
+## soundtrack and swing it straight back. Logged phase changes at 1.7s, 2.2s,
+## 4.2s: music that re-decides every two seconds is not scoring the game, it is
+## reporting noise.
+##
+## Longer than the cross-fade, necessarily: a hold shorter than a fade means a
+## new change can begin before the previous one has finished arriving, which is
+## how the director ended up cross-fading FROM a track it had never started.
+@export var minimum_hold_seconds: float = 10.0
+
+@export_group("Debug")
+
+## Print every phase decision and every fade to the console.
+##
+## The music is driven by what the swarm is DOING, which changes constantly, so
+## when it misbehaves the question is never "is the fade broken" but "what did
+## the director think was happening". This answers that.
+@export var log_music: bool = false
+
+## Seconds between status lines while nothing is changing.
+##
+## The event lines only fire when something happens, which leaves long silences
+## in the log during exactly the stretches worth understanding -- a track
+## holding for ten seconds prints nothing, so the log cannot distinguish
+## "holding correctly" from "stopped working". A heartbeat fills that in.
+##
+## 0 turns the heartbeat off and leaves only the event lines.
+@export var log_interval_seconds: float = 2.0
+
+## Show the director's state on screen through DebugDraw2D.
+##
+## The console log answers what happened AFTER the fact; this answers what is
+## happening now, which is the question while playing. It reports the phase the
+## swarm is asking for alongside the one actually playing -- and those two
+## differing is the normal, correct case during a hold, not a fault.
+@export var draw_gizmos: bool = true
 
 ## Fraction of the swarm that must be fleeing before the score panics.
 ##
@@ -116,10 +162,35 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_since_sample += delta
+	_since_change += delta
+	_since_log += delta
+
+	if draw_gizmos:
+		_draw_gizmos()
+
+	if log_music and log_interval_seconds > 0.0 and _since_log >= log_interval_seconds:
+		_since_log = 0.0
+		_log_status()
+
 	if _since_sample < sample_interval:
 		return
 	_since_sample = 0.0
-	play_phase(situation())
+	var wanted: Phase = situation()
+
+	# Held. The phase itself still tracks the swarm honestly -- it is only the
+	# AUDIO that refuses to be dragged around by a transient.
+	# Not logged here. This fires twice a second for the whole hold, and the
+	# heartbeat already reports what is wanted and how long is left -- printing
+	# both buried the useful line under twenty identical ones.
+	if wanted != current_phase and _since_change < minimum_hold_seconds:
+		return
+
+	if log_music and wanted != current_phase:
+		print("[Music] %6.1fs  %s -> %s" % [
+			Time.get_ticks_msec() / 1000.0,
+			Phase.keys()[current_phase], Phase.keys()[wanted]
+		])
+	play_phase(wanted)
 
 
 ## The phase the player's own circumstances demand, or null if the ship has
@@ -223,6 +294,24 @@ func play_phase(phase: Phase) -> void:
 		return
 	current_phase = phase
 	var next_stream: AudioStream = _stream_for_phase(phase)
+
+	# Nothing to cross-fade TO if it is already playing. Several phases share
+	# a track -- HARVEST and PATROL are the same piece, as are COMBAT and
+	# FLEE -- so a swarm drifting between two of them changed phase without
+	# changing music, and the director dutifully faded the track out and back
+	# in to itself. From the player's side that read as the loop fading every
+	# few seconds for no reason.
+	#
+	# Compared by stream, not by phase: the phase genuinely did change, and
+	# current_phase above is updated to say so. It is the AUDIO that has no
+	# reason to move.
+	if next_stream != null and next_stream == stream and playing:
+		if log_music:
+			print("[Music]         same track, no fade (%s)" % [
+				stream.resource_path.get_file()
+			])
+		return
+
 	if _fade_tween != null:
 		_fade_tween.kill()
 	if next_stream == null:
@@ -230,6 +319,12 @@ func play_phase(phase: Phase) -> void:
 		_fade_tween.tween_property(self, "volume_db", _SILENCE_DB, fade_seconds)
 		_fade_tween.tween_callback(stop)
 		return
+	if log_music:
+		print("[Music]         CROSS-FADE %s -> %s  (playing=%s, vol %.1f)" % [
+			stream.resource_path.get_file() if stream != null else "silence",
+			next_stream.resource_path.get_file(), playing, volume_db
+		])
+	_since_change = 0.0
 	_fade_tween = create_tween()
 	if playing:
 		_fade_tween.tween_property(self, "volume_db", _SILENCE_DB, fade_seconds)
@@ -265,3 +360,59 @@ func _start_stream(next_stream: AudioStream) -> void:
 	stream = next_stream
 	volume_db = _SILENCE_DB
 	play()
+
+
+## Report the director's state through the 2D debug overlay.
+##
+## Drawn every frame rather than on the sample interval, so the hold countdown
+## runs smoothly instead of stepping twice a second.
+func _draw_gizmos() -> void:
+	var track: String = "silence"
+	if stream != null:
+		track = stream.resource_path.get_file()
+
+	DebugDraw2D.set_text("Music phase", Phase.keys()[current_phase])
+	DebugDraw2D.set_text("Music track", track)
+	DebugDraw2D.set_text(
+		"Music level",
+		"%.1f dB%s" % [volume_db, "  (fading)" if _fade_tween != null and _fade_tween.is_running() else ""]
+	)
+
+	# What the swarm is asking for RIGHT NOW, which is only sampled twice a
+	# second for the decision but can be read continuously for the display.
+	var wanted: Phase = situation()
+	if wanted == current_phase:
+		DebugDraw2D.set_text("Music wants", "-")
+	else:
+		var remaining: float = maxf(minimum_hold_seconds - _since_change, 0.0)
+		DebugDraw2D.set_text(
+			"Music wants",
+			"%s in %.1fs" % [Phase.keys()[wanted], remaining]
+		)
+
+
+## One line describing everything the director is doing.
+##
+## Printed on an interval rather than on change, so a long hold is visibly a
+## hold rather than an absence of output. The "wants" column is the useful one:
+## it differing from the playing phase is the normal state during a hold, and
+## seeing the countdown run down is how a held track is distinguished from a
+## stuck one.
+func _log_status() -> void:
+	var track: String = "silence"
+	if stream != null:
+		track = stream.resource_path.get_file()
+
+	var wanted: Phase = situation()
+	var note: String = "steady"
+	if _fade_tween != null and _fade_tween.is_running():
+		note = "FADING"
+	elif wanted != current_phase:
+		note = "wants %s in %.1fs" % [
+			Phase.keys()[wanted], maxf(minimum_hold_seconds - _since_change, 0.0)
+		]
+
+	print("[Music] %6.1fs  %-8s  %-24s %6.1f dB  %s" % [
+		Time.get_ticks_msec() / 1000.0,
+		Phase.keys()[current_phase], track, volume_db, note
+	])
