@@ -64,6 +64,7 @@ Mapped to the module material.
 |---|---|
 | Steering behaviours | `scripts/steering/` -- seek, arrive, flee, wander, offset pursue |
 | Flocking | separation, alignment, cohesion on every drone |
+| Obstacle avoidance | three feelers per agent, probing ahead along the direction of travel |
 | Force combination | WTPRS -- weighted truncated running sum with prioritisation |
 | Spatial partitioning | uniform spatial hash, 27-cell neighbour scan |
 | Finite state machines | two tiers: per-unit state plus a global state that runs every frame |
@@ -118,9 +119,15 @@ personality is a different table rather than different code.
   seamless looping streams at load. See
   [`docs/audio/analysis.md`](docs/audio/analysis.md) for the method, the
   measurements, and two corrections worth reading.
+- **Original music.** Three tracks written for this project, scored to the
+  swarm rather than to the clock: the director reads what most of the swarm is
+  actually doing and picks a theme from that, so harvesting, patrolling and
+  fighting each sound different without any of it being triggered by hand. See
+  [`ATTRIBUTIONS.md`](ATTRIBUTIONS.md).
 - **Debug gizmos** on every agent -- velocity, steering force, perception
-  radius, target lines -- toggled with a single key so the forces can be shown
-  or hidden without a rebuild.
+  radius, target lines, the rival commander's live utility scores, and the
+  music director's current phase -- all toggled with a single key, so the
+  systems can be shown or hidden without a rebuild.
 
 ---
 
@@ -143,7 +150,7 @@ Requires Godot 4.7.1. The `debug_draw_3d` addon is vendored in
 | `godot/scripts/agents/ai/` | utility considerations and profiles |
 | `godot/scripts/states/` | state machine and all states |
 | `godot/scripts/swarm/` | swarm coordination and the spatial hash |
-| `godot/scripts/audio/` | synthesised engine sounds |
+| `godot/scripts/audio/` | synthesised engine sounds and the music director |
 | `godot/scripts/world/` | hulls, asteroids, barnacles, starfield |
 | `blender/` | scripted mesh generation |
 | `docs/` | design notes, audio analysis, marking scheme |
@@ -156,8 +163,9 @@ Tracked against `docs/assignment-spec.md`.
 
 ### Axis 1 -- Groovyness (visuals and sound)
 
-- `[OK]` Sound design -- synthesised engine and swarm, derived from measured
-  spectra rather than sampled.
+- `[OK]` Sound design -- engine and swarm synthesised from measured spectra
+  rather than sampled, and three original music tracks scored to what the
+  swarm is doing rather than to the clock.
 - `[OK]` Visual identity -- pixel rendering, faction colours, starfield, sun,
   gas giant, asteroid belt, glow.
 - `[OK]` Named identity -- the Matriarch, the swarm, the Farragut wreck.
@@ -170,7 +178,9 @@ Tracked against `docs/assignment-spec.md`.
 - `[OK]` Complex algorithms -- steering, WTPRS, flocking, spatial hash,
   two-tier FSM, utility AI.
 - `[OK]` Well-designed classes with clear responsibilities.
-- `[OK]` Debug gizmos on all agents, with a toggle.
+- `[OK]` Debug gizmos throughout, with a single toggle -- steering forces and
+  perception radii on every agent, the rival commander's live utility scores
+  above its hull, and the music director's phase on the 2D overlay.
 - `[OK]` Advanced Godot systems -- custom shaders, sky shader with radiance
   map, global shader uniforms, sub-viewport rendering, procedural audio.
 - `[OK]` Runs from the exported build on Linux and Windows; the demo video is
@@ -200,4 +210,4 @@ Full attribution for assets, music and technique is in
 
 ## What I Learned
 
-<!-- TODO(human) -->
+
