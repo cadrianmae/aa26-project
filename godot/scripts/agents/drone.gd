@@ -28,16 +28,9 @@ signal died(unit: Drone)
 
 ## Speed ceiling in units per second. Behaviours read this to size the
 ## velocity they ask for, so it is an input, not a readout.
-##
-## 1.5x the Matriarch's 36. A drone that cannot outrun the ship it escorts can
-## never break off and come back, so the attack runs in [EngageState] depend
-## on this margin -- and a swarm that moves visibly faster than the capital
-## ship is what makes it read as a cloud of small things rather than a formation
-## of little ships.
 @export var max_speed: float = 54.0
 
-## Ceiling on the summed steering force. Without it, several behaviours pulling
-## the same way produce unbounded acceleration and the motion reads as robotic.
+## Ceiling on the summed steering force.
 @export var max_force: float = 40.0
 
 ## How far the unit rolls into a turn. 0 keeps it upright.
@@ -49,16 +42,6 @@ signal died(unit: Drone)
 
 ## Widest angle, in degrees, between the drone's nose and the force it may
 ## apply. 180 removes the limit.
-##
-## A drone has no side thrusters. Without this it accelerates in any direction
-## regardless of which way the hull points, which lets it sidle and reverse --
-## and a unit that can sidle never needs to turn, so it never needs an attack
-## RUN. It just holds station off its target and shoots.
-##
-## At 90 degrees the drone must turn to go somewhere new, and turning while
-## moving describes an arc. That arc is the hit-and-run: in, past, around, back.
-## The tactic is not scripted anywhere -- it falls out of taking away the
-## ability to fly sideways.
 @export_range(10.0, 180.0) var max_steer_angle: float = 90.0
 
 @export_group("Combat")
@@ -79,10 +62,6 @@ var max_health: float = 0.0
 @export_group("Harvesting")
 
 ## Most Meta-Alloy this unit can carry at once.
-##
-## The cap is what creates the round trip. Without it a drone would harvest a
-## Barnacle dry in one visit and the economy would be a single journey rather
-## than a rhythm the player can watch, interrupt and defend.
 @export var payload_capacity: float = 10.0
 
 ## Meta-Alloy currently carried. Filled by [HarvestState], emptied by
@@ -120,10 +99,8 @@ func _ready() -> void:
 	max_health = health
 	_collect_behaviours()
 	if swarm == null:
-		# The Godot editor can silently delete instance-override properties
-		# from the main scene, leaving units without a swarm reference.
-		# Phases 2+ also spawn units at run time with no scene reference.
-		# Fall back to a group lookup so we can find our swarm either way.
+		# Editor overrides get pruned and factory-spawned units have no scene
+		# reference, so fall back to the group.
 		swarm = get_tree().get_first_node_in_group(
 			"swarm_" + str(allegiance)
 		) as Swarm
@@ -157,18 +134,11 @@ func _process(_delta: float) -> void:
 ##   Prioritisation  break out of the loop at that point, so behaviours later
 ##                   in the child order contribute nothing at all this tick
 ##
-## The break is the part worth understanding. Priority is SCENE-TREE CHILD
-## ORDER -- there is no priority property anywhere -- so reordering the
-## behaviour nodes on a unit changes what it does. Flee sits first, which is
-## why the survival reflex is guaranteed its share of the force budget before
-## formation-keeping gets any.
+## Priority is SCENE-TREE CHILD ORDER; there is no priority property.
+## Reordering the behaviour nodes changes what the unit does.
 ##
-## The [method @GlobalScope.is_finite] guard is not defensive padding. A
-## behaviour that divides by a zero-length vector returns NaN or infinity, and
-## NaN poisons a running sum permanently: every later comparison against
-## max_force returns false, so the truncation silently stops truncating and the
-## break never fires. Checking is_finite rather than is_nan also catches the
-## infinity that a near-zero divisor produces first.
+## is_finite, not is_nan: NaN or infinity in the running sum makes every
+## later max_force comparison false, so truncation silently stops.
 func calculate_force() -> Vector3:
 	var total_force: Vector3 = Vector3.ZERO
 	var weighted_force: Vector3 = Vector3.ZERO
@@ -192,16 +162,7 @@ func calculate_force() -> Vector3:
 
 ## Clamp a force into the cone the drone can actually thrust through.
 ##
-## Rotated onto the edge of the cone rather than projected onto it. Projection
-## collapses to zero for a force at exactly 90 degrees, so a drone asked to go
-## directly sideways would simply stop; rotating keeps the full magnitude and
-## turns it into the sharpest turn the drone can make, which is what a pilot
-## would do.
-##
-## BRAKING IS EXEMPT. A force opposing the drone's own velocity is slowing it
-## down, and a unit that cannot brake cannot stop -- it would circle its target
-## forever unable to shed speed. Reverse thrust is allowed precisely because it
-## is the one backwards force that is not a way of avoiding turning.
+## Braking is exempt: thrust opposing velocity is not a dodged turn.
 func _limit_to_steering_arc(desired: Vector3) -> Vector3:
 	if max_steer_angle >= 180.0 or desired.length_squared() < 0.0001:
 		return desired
@@ -219,8 +180,6 @@ func _limit_to_steering_arc(desired: Vector3) -> Vector3:
 	if absf(offset) <= limit:
 		return desired
 
-	# Braking: the force opposes travel, so it is shedding speed rather than
-	# dodging a turn.
 	if velocity.length_squared() > 0.01 and desired.dot(velocity) < 0.0:
 		return desired
 
@@ -251,10 +210,8 @@ func _physics_process(delta: float) -> void:
 
 	move_and_slide()
 
-	# Pinned to the plane after the move. Zeroed forces keep a drone from
-	# steering off it, but move_and_slide pushes along a contact normal, and a
-	# rock's sphere collider has one that points partly up -- so a collision
-	# lifts the drone off the plane with no Y velocity to bring it back.
+	# Pinned AFTER the move: move_and_slide resolves collisions along a contact
+	# normal, and a rock's sphere collider has one with a Y component.
 	global_position.y = 0.0
 
 	if velocity.length() > 0.01:
@@ -284,20 +241,12 @@ func _face_direction_of_travel(acceleration: Vector3, delta: float) -> void:
 	look_at(global_position - velocity, smoothed_up)
 
 
-## Reduce health and free the unit when it runs out.
 ## Whether this unit is carrying as much as it can.
-##
-## A method rather than callers comparing the two fields themselves, so
-## "full" is defined once. Harvesting and depositing both ask this, and a
-## later phase that adds a carrying upgrade changes only this line.
 func is_full() -> bool:
 	return payload >= payload_capacity
 
 
 ## Add up to [param amount] to the payload, returning what was actually taken.
-##
-## Mirrors [method Barnacle.extract]: the caller learns from the return value
-## that the drone filled up, without a separate check that could disagree.
 func load_payload(amount: float) -> float:
 	var space: float = maxf(payload_capacity - payload, 0.0)
 	var taken: float = minf(amount, space)
@@ -305,27 +254,14 @@ func load_payload(amount: float) -> float:
 	return taken
 
 
-## Hand over everything carried, returning how much that was.
-func unload_payload() -> float:
-	var carried: float = payload
-	payload = 0.0
-	return carried
-
-
+## Reduce health and free the unit when it runs out.
 func take_damage(amount: float) -> void:
 	health -= amount
 	if health > 0.0:
 		return
 
-	# Every death is a detonation. A swarm unit is a flying charge, so it going
-	# up when killed is what it was always going to do -- and it has a real
-	# consequence: a tightly packed swarm is dangerous to ITSELF, because one
-	# loss can take its neighbours with it. Spacing stops being free.
-	#
-	# Spawned BEFORE deregistering and freeing, so the position is still valid,
-	# but the blast is dealt from the Explosion's own _ready on the next frame
-	# -- by which point this drone is already out of the register and cannot be
-	# caught in its own blast.
+	# Spawned before deregistering, so the blast (dealt next frame) cannot
+	# catch this drone in it.
 	if explodes_on_death:
 		Explosion.burst(get_tree(), global_position, death_blast_scale)
 

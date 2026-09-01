@@ -1,28 +1,12 @@
-## A death: a particle burst, a report, and a blast that hurts what is nearby.
+## A one-shot detonation: a particle burst, a report, a flash, and area damage.
 ##
-## Every drone that dies detonates. That is a Thargon trait rather than a
-## convenience -- a swarm unit is a flying charge, so it going up when killed
-## is what it was always going to do -- and it has a real consequence for play:
-## a tightly packed swarm is dangerous to ITSELF, because one loss can take its
-## neighbours with it. Flying loose is suddenly a decision rather than a
-## default.
-##
-## Self-contained and self-freeing. It builds its own particles, its own sound
-## and its own light in code and removes itself once the longest of them has
-## finished, so nothing has to own it, track it, or clean it up. Spawning one
-## is a single static call from wherever something died.
-##
-## The blast is dealt ONCE, on the frame it appears. Damage over the life of
-## the effect would let a slow-moving unit take the same hit several times, and
-## would tie a gameplay quantity to how long an animation happens to run.
+## Builds its own children in code and frees itself after [member duration].
+## The blast is dealt once, in [method _ready].
 class_name Explosion
 extends Node3D
 
-## Damage dealt to everything within [member blast_radius], friend or foe.
-##
-## Deliberately not allegiance-filtered. A detonating drone does not check
-## whose side the thing beside it is on, and a swarm that can hurt itself is
-## what gives spacing a cost.
+## Damage dealt to every unit within [member blast_radius], regardless of
+## allegiance.
 @export var blast_damage: float = 14.0
 
 @export var blast_radius: float = 9.0
@@ -39,18 +23,17 @@ extends Node3D
 var _age: float = 0.0
 
 
-## Spawn an explosion at [param at], parented to the scene root.
-##
-## Static and root-parented for the same reason projectiles are: an effect
-## attached to the thing that died would be freed along with it, usually on the
-## very frame it was meant to appear.
+## Spawn an explosion at [param at], parented to the scene root so it outlives
+## the node that died.
 static func burst(tree: SceneTree, at: Vector3, scale_factor: float = 1.0) -> Explosion:
 	var boom := Explosion.new()
 	boom.blast_damage *= scale_factor
 	boom.blast_radius *= scale_factor
 	boom.spark_count = int(boom.spark_count * scale_factor)
+	# Set before entering the tree: add_child runs _ready, and _deal_blast
+	# measures from the position there.
+	boom.position = at
 	tree.get_root().add_child(boom)
-	boom.global_position = at
 	return boom
 
 
@@ -63,8 +46,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_age += delta
-	# The light fades over the first third, which is what sells the flash: a
-	# constant light that vanished would read as a bug.
+	# The flash fades over the first third of the effect's life.
 	var light: OmniLight3D = get_node_or_null("Flash") as OmniLight3D
 	if light != null:
 		light.light_energy = maxf(0.0, 8.0 * (1.0 - _age / (duration * 0.35)))
@@ -90,15 +72,11 @@ func _build_particles() -> void:
 	process.spread = 180.0
 	process.initial_velocity_min = blast_radius * 2.0
 	process.initial_velocity_max = blast_radius * 5.0
-	# Damping rather than gravity: this is space, so sparks slow rather than
-	# fall, and zero gravity keeps the burst on the plane the game is played on.
 	process.gravity = Vector3.ZERO
 	process.damping_min = 6.0
 	process.damping_max = 14.0
 	process.scale_min = 0.25
 	process.scale_max = 0.7
-	# Hot in the middle, caustic at the edges -- the same two colours the
-	# weapons use, so a detonation reads as the same technology.
 	var ramp := Gradient.new()
 	ramp.set_color(0, core_colour)
 	ramp.set_color(1, Color(edge_colour.r, edge_colour.g, edge_colour.b, 0.0))
@@ -112,8 +90,6 @@ func _build_particles() -> void:
 	var material := StandardMaterial3D.new()
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	# Additive, so overlapping sparks brighten rather than occlude each other,
-	# and billboarded so a flat quad never shows its edge to the camera.
 	material.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	material.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 	material.vertex_color_use_as_albedo = true
@@ -124,7 +100,7 @@ func _build_particles() -> void:
 	add_child(particles)
 
 
-## A brief flash, so the explosion lights the rocks around it.
+## Build the flash that lights nearby geometry.
 func _build_light() -> void:
 	var light := OmniLight3D.new()
 	light.name = "Flash"
@@ -134,11 +110,7 @@ func _build_light() -> void:
 	add_child(light)
 
 
-## The report. Synthesised rather than sampled, like every other sound here.
-##
-## Noise shaped by a fast decay: an explosion has no pitch, so there is nothing
-## to measure and nothing to reproduce -- it is a burst of everything at once,
-## which is exactly what filtered noise is.
+## Build and play the report.
 func _build_sound() -> void:
 	var player := AudioStreamPlayer3D.new()
 	player.name = "Report"
@@ -156,9 +128,7 @@ func _render_report() -> AudioStreamWAV:
 	var data := PackedByteArray()
 	data.resize(frames * 2)
 
-	# A simple one-pole low-pass on white noise, with the cutoff falling as the
-	# sound decays: the crack is bright and the tail is dull, which is what an
-	# explosion does as its high frequencies dissipate first.
+	# One-pole low-pass on white noise, cutoff falling with the decay.
 	var previous: float = 0.0
 	for i in frames:
 		var t: float = float(i) / float(frames)

@@ -1,16 +1,6 @@
 ## A slow, smoothly-varying push in no particular direction.
 ##
-## Without it a swarm SETTLES. Every other behaviour here is a converging one
-## -- arrive brakes, separation balances against cohesion, offset pursue holds
-## a slot -- so once the forces cancel, fifty drones sit perfectly still in a
-## lattice. Correct, and completely wrong: a swarm that has stopped moving
-## stops reading as alive.
-##
-## Reynolds calls this wander, and solves it by walking a target point around
-## a circle projected ahead of the agent. This uses value noise instead, for
-## two reasons: the noise field is continuous, so the force never jumps the way
-## a randomly re-rolled target does, and sampling it at a per-unit offset gives
-## every drone its own independent drift from one shared field.
+## Samples a shared value-noise field at a per-unit offset.
 ##
 ## Adapted in spirit from Reynolds, "Steering Behaviors For Autonomous
 ## Characters", the Wander behaviour.
@@ -22,14 +12,7 @@ extends SteeringBehaviour
 
 @export_group("Distance gating")
 
-## Drift is scaled DOWN when the unit is far from what it is heading for, and
-## up when it arrives. Thargon swarms in Elite Dangerous do exactly this:
-## beyond a few kilometres they hold formation and run straight, and only
-## inside that range do they slow and start swaying about.
-##
-## The contrast is what carries the information. A swarm that jitters
-## constantly just looks noisy; one that snaps out of formation as it closes
-## reads as deciding to attack.
+## Scale drift down when far from the objective, up as the unit closes.
 @export var gate_by_distance: bool = true
 
 ## Inside this distance from its objective, the unit drifts at full strength.
@@ -43,9 +26,8 @@ extends SteeringBehaviour
 
 ## How quickly the direction changes, in noise units per second.
 ##
-## Low. This is a drift, not a twitch: at high rates the noise decorrelates
-## between frames and the behaviour becomes white noise, which cancels itself
-## out over any two frames and just wastes force budget.
+## Low: at high rates the noise decorrelates between frames and cancels itself
+## out.
 @export var drift_speed: float = 0.35
 
 ## Noise frequency. Larger makes the field vary faster in space, which here
@@ -66,9 +48,7 @@ func _ready() -> void:
 		_field = FastNoiseLite.new()
 		_field.noise_type = FastNoiseLite.TYPE_PERLIN
 		_field.frequency = noise_frequency
-	# Derived from the instance id, like the patrol and queue phases: any
-	# stable per-unit number works, and a shared counter would collide when
-	# units are freed and rebuilt.
+	# Derived from the instance id: a stable per-unit number.
 	_offset = float(agent.get_instance_id() % 9973) * 0.37
 
 
@@ -92,16 +72,14 @@ func calculate() -> Vector3:
 ## How much drift applies right now, from [member far_strength] to 1.0.
 ##
 ## Read off whatever the unit is currently steering AT rather than off its
-## state name, so a new state gets the behaviour for free and none of them
-## needs to know this exists.
+## state name.
 func distance_gain() -> float:
 	if not gate_by_distance:
 		return 1.0
 
 	var objective: Vector3 = _objective()
 	if objective == Vector3.INF:
-		# Nothing to be far FROM -- a unit holding station is at its
-		# objective by definition, so it drifts freely.
+		# Nothing to be far FROM: drift freely.
 		return 1.0
 
 	var distance: float = agent.global_position.distance_to(objective)
@@ -113,9 +91,6 @@ func distance_gain() -> float:
 
 ## Where this unit is currently heading, or Vector3.INF when nothing says.
 ##
-## Takes it from the enabled steering behaviours themselves: whichever arrive
-## or seek is switched on names the objective, so this stays correct as states
-## are added without any of them reporting anything.
 func _objective() -> Vector3:
 	for behaviour in agent.behaviours:
 		if not behaviour.enabled:
@@ -124,9 +99,7 @@ func _objective() -> Vector3:
 			continue
 		# Validity checked BEFORE the cast, not after. `as` on a freed object
 		# throws "Trying to cast a freed object" in its own right, so a check
-		# on the result never runs -- the crash happens on the way to it. A
-		# behaviour holds its target as a plain reference, and the target can
-		# be freed at any time: shot down, or detonated.
+		# on the result never runs.
 		var held: Variant = behaviour.target
 		if held == null or not is_instance_valid(held):
 			continue

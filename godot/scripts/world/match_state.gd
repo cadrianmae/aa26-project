@@ -1,25 +1,14 @@
 ## Decides when the match is over and who won.
-##
-## Watches both commanders. The first to die loses, because a hatchery without its
-## Matriarch has no factory and no orders -- the drones would simply drift.
-## That makes the capital ship the thing worth defending, which is what gives
-## the swarm something to defend rather than just something to spend.
-##
-## Kept out of [Hatchery] and [Ship] on purpose: neither of them should know the
-## rules of the match. A ship knows how to die; whether that ends anything is
-## a question about the game, and it lives here.
 class_name MatchState
 extends Node
 
 ## Emitted once, when the match resolves.
 signal finished(winner_allegiance: int)
 
-## Which side the player commands, so the score can be reported as won or lost
-## rather than as a number.
+## Which side the player commands.
 @export var player_allegiance: int = 0
 
-## Drive the music to VICTORY or DEFEAT when the match ends. Both themes exist
-## and have been unreachable since the director was written.
+## Drive the music to VICTORY or DEFEAT when the match ends.
 @export var set_music_phase: bool = true
 
 ## Whether the match has already resolved. Guards against the signal firing

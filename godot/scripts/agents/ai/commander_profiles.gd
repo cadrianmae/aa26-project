@@ -1,9 +1,6 @@
 ## The commanders' personalities, as data.
 ##
-## Each profile is a table mapping an intent to the considerations that make it
-## attractive. Nothing here is code the AI runs -- it is numbers the scorer
-## reads, so a new opponent is a new function in this file and no change
-## anywhere else.
+## Each profile maps an intent to the considerations that make it attractive.
 ##
 ## The inputs a consideration can name, all normalised to 0..1 by
 ## [method CommanderAI.gather_inputs]:
@@ -21,14 +18,9 @@
 class_name CommanderProfiles
 extends RefCounted
 
-## The curve names, mirrored from [enum Consideration.Curve].
+## The curve names, mirrored from [enum Consideration.Response].
 ##
-## Local constants rather than X. GDScript cannot resolve
-## another class's enum from here -- it fails with "Could not resolve external
-## class member Curve", a dependency-resolution limit rather than a mistake in
-## the reference. The values are the enum's own, and a table reading
-## `INVERSE_QUADRATIC` is easier to scan than one repeating the class name on
-## every line anyway.
+## Local constants: GDScript cannot resolve another class's enum from here.
 const LINEAR: int = 0
 const INVERSE: int = 1
 const QUADRATIC: int = 2
@@ -38,11 +30,8 @@ const THRESHOLD: int = 4
 
 ## Shorthand, so a table reads as data rather than as constructor calls.
 ##
-## `curve` defaults to the literal 0 rather than LINEAR:
-## GDScript resolves default arguments at parse time and cannot reach another
-## class's enum there, failing with "Could not resolve external class member".
-## 0 IS Curve.LINEAR -- the enum's first value -- and the tables below name
-## the curves explicitly anyway.
+## `curve` defaults to the literal 0 (= LINEAR): default arguments cannot
+## reach another class's enum at parse time.
 static func need(
 	input: StringName,
 	curve: int = 0,
@@ -55,10 +44,6 @@ static func need(
 
 
 ## The default opponent: harvest, then seek, then destroy.
-##
-## Plays the game the way the player is meant to -- build an economy, use it
-## to grow a swarm, then take that swarm to the enemy. Beating it means
-## beating that plan, which is the clearest thing an opponent can teach.
 static func escalating() -> UtilityProfile:
 	var profile: UtilityProfile = UtilityProfile.named("escalating")
 	profile.considerations = {
@@ -68,13 +53,8 @@ static func escalating() -> UtilityProfile:
 		Swarm.Intent.HARVEST: [
 			# No rock, no harvesting. A veto rather than a preference.
 			need(&"has_barnacle", THRESHOLD),
-			# Wanted most when the swarm is small. As it fills out, this falls
-			# away and the other intents overtake it -- which IS the
-			# escalation, with nothing sequencing it.
-			#
-			# Floored at 0.35 so harvesting never drops to nothing even at full
-			# strength: a commander that stops mining the moment it is ready to
-			# fight has no way to replace what the fight costs it.
+			# Falls away as the swarm fills out. Floored at 0.35 so a ready
+			# commander still replaces what a fight costs it.
 			need(&"war_readiness", INVERSE, 0.0, 1.0, 0.5, 0.35),
 			# Nearer rocks preferred, but a floor so a distant rock is still
 			# better than idling. Without the floor, distance alone could veto
@@ -108,13 +88,6 @@ static func escalating() -> UtilityProfile:
 			need(&"has_enemy", THRESHOLD),
 			# QUADRATIC and gated at 0.6: below that much of a swarm this is
 			# ZERO, not merely small, so a thin swarm cannot attack at all.
-			#
-			# Without the gate the commander opened on ENGAGE with five drones
-			# against a minimum_war_swarm of eight -- readiness 0.62 squared to
-			# 0.39, which still beat a HARVEST that had nothing to multiply it
-			# up. Remapping the input so 0.6 is the new zero makes the early
-			# game genuinely unwinnable for ENGAGE rather than just unlikely,
-			# and that is what forces the economy to come first.
 			need(&"war_readiness", QUADRATIC, 0.6, 1.0),
 			# Prefers to pick the fight in good health, but will not refuse
 			# one outright -- hence the floor.
@@ -130,8 +103,7 @@ static func escalating() -> UtilityProfile:
 		# HOLD -- retreat, and the last resort when everything else is vetoed.
 		Swarm.Intent.HOLD: [
 			# INVERSE_QUADRATIC: nearly nothing at full health, then rising
-			# sharply once the commander is genuinely in trouble. A LINEAR
-			# curve here would make it mildly defensive all the time.
+			# sharply once the commander is genuinely in trouble.
 			need(&"health", INVERSE_QUADRATIC),
 		],
 	}

@@ -2,8 +2,7 @@
 ## facing.
 ##
 ## Unlike every other behaviour this returns a raw thrust vector rather than
-## [code]desired - velocity[/code]. That is what makes it feel like flying a
-## ship rather than commanding a destination; its magnitude comes entirely from
+## [code]desired - velocity[/code]; its magnitude comes entirely from
 ## [member SteeringBehaviour.weight].
 ##
 ## Movement is always relative to the camera, never the ship's own basis --
@@ -15,10 +14,8 @@
 ## that point where the player is looking rather than where the ship happens
 ## to be drifting.
 ##
-## Gamepad support maps the left stick to movement and the right stick to
-## aiming, matching the mouse's role in AIMED mode -- combat needs the right
-## stick free to aim, so camera rotation goes to the shoulder buttons instead
-## of the more conventional right-stick-for-camera layout.
+## Gamepad: left stick moves, right stick aims, shoulder buttons rotate the
+## camera.
 ##
 ## Adapted from Duggan, miniature-rotary-phone/behaviors/player_steering.gd.
 ## The vertical axis is dropped because movement is constrained to XZ.
@@ -40,12 +37,9 @@ const AIM_STICK_PROJECTION_DISTANCE: float = 10.0
 
 ## Thrust applied along the camera-relative forward/right axes.
 ##
-## This, not [member Ship.max_speed], is what sets how fast the player actually
-## goes. The ship accelerates until thrust balances damping, so its cruising
-## speed is thrust / (mass * damping) -- with the Matriarch's mass of 4 and
-## damping of 0.6, that is thrust / 2.4. `max_speed` is only a ceiling, and the
-## ship settles well below it, so raising `max_speed` alone changes nothing at
-## all. Raise this instead.
+## This, not [member Ship.max_speed], sets how fast the player actually goes:
+## cruising speed is thrust / (mass * damping). `max_speed` is only a ceiling,
+## and the ship settles well below it.
 @export var thrust: float = 60.0
 
 ## The camera that movement and aiming are relative to. Falls back to the
@@ -63,11 +57,8 @@ var last_force: Vector3 = Vector3.ZERO
 func _ready() -> void:
 	super()
 
-	# Both hives instance the SAME commander_ship.tscn, separated only by an
-	# allegiance flag -- which is the point, but it means this node exists on
-	# the rival ship too, reading the same keyboard. The rival mirrored every
-	# move the player made, because it was quite literally taking the player's
-	# input. Only the player's own commander reads input.
+	# Both hives share commander_ship.tscn, so guard: only allegiance 0 reads
+	# input.
 	var ship: Ship = get_parent() as Ship
 	if ship != null and ship.allegiance != 0:
 		enabled = false
@@ -75,11 +66,8 @@ func _ready() -> void:
 		return
 
 	if camera == null:
-		# The editor silently prunes instance-override properties on nodes
-		# inside an instanced sub-scene (this node lives inside
-		# commander_ship.tscn), so wiring `camera` from main.tscn does not
-		# survive a re-save. Resolving it at run time instead needs no scene
-		# wiring at all, matching how the swarm and its leader are resolved.
+		# Scene-authored overrides on nodes inside an instanced sub-scene do not
+		# survive a re-save; resolve at run time.
 		camera = get_viewport().get_camera_3d()
 
 

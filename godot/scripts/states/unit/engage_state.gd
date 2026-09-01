@@ -1,55 +1,28 @@
 ## Hunt the nearest enemy and shoot it.
 ##
-## Target selection is per drone, not issued by the swarm. The player orders
-## ENGAGE and each unit picks whatever is nearest to itself, so the swarm
-## spreads naturally across a fight instead of fifty drones queueing behind
-## one target -- an emergent focus-fire that nothing coordinates.
-##
 ## Retargets only when the current target dies or drifts out of reach.
-## Re-choosing every frame makes drones oscillate between two enemies at
-## similar range and never actually close on either.
 class_name EngageState
 extends State
 
 ## The SeekBehaviour this state points at the target.
-##
-## Seek, not the formation behaviour: OffsetPursue holds a slot beside the
-## commander, which is the opposite of chasing something.
 @export var seek_behaviour_name: String = "Engage"
 
 ## Where to go when there is nothing left to fight.
 @export var idle_state_name: String = "Follow"
 
 ## Distance at which an attack run breaks off and the drone extends away.
-##
-## Thargons do not brawl. They make a pass, overshoot, run out, turn and come
-## back -- so a drone commits to the target until it is this close, then stops
-## steering at it entirely. Without a break-off the whole swarm converges on
-## one point and sits there grinding, which reads as a bug even when it is
-## working exactly as written.
 @export var break_off_distance: float = 14.0
 
 ## How far out to run before turning back for the next pass.
-##
-## Well beyond weapon range, so the extend is a real disengagement rather than
-## a wobble. This is what gives the fight its rhythm: waves arriving and
-## clearing rather than one continuous scrum.
 @export var extend_distance: float = 85.0
 
 ## How far to one side the run-out is angled, as a fraction of extend_distance.
-##
-## Without this a drone reverses straight back down its own approach and the
-## two legs overlay each other. Angling the exit turns the pattern into a loop,
-## which is both what a real attack run looks like and what stops outbound
-## drones colliding with inbound ones.
 @export_range(0.0, 1.5) var extend_sweep: float = 0.65
 
 ## How far to look for a target.
 @export var acquire_range: float = 140.0
 
-## Behaviours this state runs. Separation matters more here than anywhere
-## else: without it a swarm converging on one enemy collapses into a single
-## point and stops reading as many units.
+## Behaviours this state runs.
 const ACTIVE_BEHAVIOURS: Array = ["Avoid", "Engage", "Separation", "Alignment"]
 
 ## Which leg of the attack pattern this drone is on.
@@ -64,7 +37,7 @@ var phase: Phase = Phase.RUN
 var _weapon: Weapon
 
 ## Carries the run-out point, because SeekBehaviour targets a node rather than
-## a position. One per drone, so each picks its own exit.
+## a position.
 var _extend_marker: Node3D
 
 
@@ -86,10 +59,6 @@ func _point_seek_at_target() -> void:
 
 
 ## Point the seek behaviour at any node.
-##
-## The attack pattern swings the same behaviour between the enemy and a
-## run-out marker, so the seek is aimed rather than re-created: one behaviour,
-## two destinations, and the WTPRS budget never changes shape mid-fight.
 func _point_seek_at(destination: Node3D) -> void:
 	if unit == null:
 		return
@@ -108,8 +77,7 @@ func _point_seek_at(destination: Node3D) -> void:
 ## Choose the nearest enemy drone or capital ship within reach.
 ##
 ## Ships are weighted as if closer than they are, so a swarm that could shoot
-## either will go for the ship. Destroying the commander ends the match;
-## trading drones does not.
+## either will go for the ship.
 func acquire() -> Node3D:
 	var enemy: int = 1 - unit.allegiance
 	var closest: Node3D = null
@@ -136,28 +104,14 @@ func acquire() -> Node3D:
 			closest_score = distance
 			closest = ship
 
-	# Nothing within acquire_range. Advance on the enemy commander anyway,
-	# at whatever distance it sits.
-	#
-	# Without this, ENGAGE was silently a no-op whenever the enemy started
-	# further away than acquire_range: the seek behaviour kept a null target
-	# and contributed zero force, so a swarm ordered to attack drifted on
-	# separation, alignment and wander alone -- moving, so it never looked
-	# broken, but never arriving either. A swarm told to attack must always
-	# have somewhere to go, and the commander is the one target that cannot
-	# be out of reach, because reaching it IS the attack.
+	# Nothing within acquire_range: fall back to the enemy commander at any
+	# distance, so an ENGAGE order always has somewhere to go.
 	if closest == null:
 		closest = _enemy_commander(enemy)
 
 	target = closest
-	# A new target starts a new attack run. Without this the phase survived
-	# re-acquisition: a drone that killed its target mid-EXTEND kept phase
-	# EXTEND while the seek was repointed at the fresh target, and the EXTEND
-	# exit tests -- far enough from the target, or arrived at the run-out
-	# marker -- could then never come true, because the drone was closing on
-	# the new target rather than leaving the old one. It flew straight in and
-	# sat on top of it, which is exactly the grinding this state was rewritten
-	# to prevent.
+	# A new target starts a new run: EXTEND's exit tests cannot come true
+	# against one.
 	phase = Phase.RUN
 	_point_seek_at_target()
 	return target
@@ -197,9 +151,7 @@ func _think() -> void:
 
 	_update_phase()
 
-	# Fired on both legs. A drone that only shot on the way in would waste the
-	# overshoot, and weapons that keep bearing while extending are what make a
-	# pass feel like a strafing run rather than a ram.
+	# Fired on both legs.
 	if _weapon != null:
 		_weapon.fire_at(target)
 
@@ -228,10 +180,7 @@ func _update_phase() -> void:
 
 ## Choose where this drone runs out to after a pass.
 ##
-## Straight on through the target, then swung to one side. Carrying the
-## approach direction through means the drone overshoots rather than reversing,
-## and the side it swings to alternates per drone so a swarm fans out into a
-## wheel instead of every unit tracing the same loop.
+## Straight on through the target, then swung to one side.
 func _place_extend_point() -> void:
 	var through: Vector3 = target.global_position - unit.global_position
 	through.y = 0.0
@@ -240,7 +189,7 @@ func _place_extend_point() -> void:
 	through = through.normalized()
 
 	# Perpendicular on the plane. get_instance_id is stable per drone, so a
-	# unit always breaks the same way and the pattern stays legible.
+	# unit always breaks the same way.
 	var side: float = 1.0 if int(unit.get_instance_id()) % 2 == 0 else -1.0
 	var across := Vector3(-through.z, 0.0, through.x) * side
 

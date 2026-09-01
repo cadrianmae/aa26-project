@@ -95,8 +95,6 @@ weight = 3.5
 [node name="Thruster" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.7)
 script = ExtResource("30_thruster")
-spark_count = 12
-trail_lifetime = 0.4
 glow_range = 3.5
 
 [node name="Weapon" type="Node3D" parent="." unique_id=1319058066]

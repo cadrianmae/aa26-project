@@ -1,18 +1,7 @@
 ## A procedural, three-layer parallax starfield backdrop.
 ##
-## Builds a single large quad and feeds the camera's world position into
-## [code]starfield.gdshader[/code] every frame, which hashes stars directly
-## in the fragment shader rather than sampling a texture, so no starfield
-## asset ships with the project. The quad follows the camera's position and
-## orientation, positioned just inside the camera's far plane and scaled from
-## the camera's fov and aspect so it always exactly fills the view -- see the
-## shader file's header comment for why the quad relies on ordinary depth
-## testing (rather than depth_test_disabled) to stay behind gameplay geometry
-## and the DebugDraw3D gizmos, and why a quad was chosen over a Sky.
-##
-## Motion dust lives separately in dust_field.gd as real world-space
-## GPUParticles3D, not on this quad -- a screen-locked shader layer cannot
-## produce genuine fly-by motion, only elongating dashes.
+## Builds a large quad tracking the camera and feeds camera_world_position
+## into res://shaders/starfield.gdshader, which hashes stars per fragment.
 class_name Starfield
 extends MeshInstance3D
 
@@ -21,13 +10,10 @@ extends MeshInstance3D
 @export var camera: Camera3D
 
 ## Fraction of the camera's far plane the quad sits at. Kept short of 1.0 so
-## the quad is comfortably inside the far clip plane rather than exactly on
-## it, where it could be culled by floating point error.
+## floating point error cannot cull the quad against the far clip plane.
 @export_range(0.5, 0.999) var far_plane_fraction: float = 0.95
 
-## Render priority handed to the material. No longer load-bearing for draw
-## order now that the quad relies on real depth testing (see the shader's
-## header comment), but harmless to keep low.
+## Render priority handed to the material.
 const _RENDER_PRIORITY: int = -128
 
 var _material: ShaderMaterial
@@ -70,8 +56,7 @@ func _follow_camera() -> void:
 		aspect = viewport_size.x / viewport_size.y
 	var half_height: float = distance * tan(deg_to_rad(camera.fov) * 0.5)
 	var half_width: float = half_height * aspect
-	# A small safety margin so camera jitter or FollowCamera's own lerp lag
-	# never exposes the quad's edge for a frame.
+	# A small margin so camera lag never exposes the quad's edge.
 	_quad.size = Vector2(half_width, half_height) * 2.2
 
 	if _material == null:

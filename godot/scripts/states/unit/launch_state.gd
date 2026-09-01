@@ -1,18 +1,11 @@
 ## Freshly built by the factory, flying out to join the swarm.
 ##
-## A new drone appears beside the hatchery, which is usually nowhere near the rest
-## of the swarm. Dropping it straight into Follow makes it cross the map at
-## full speed with cohesion yanking at it, and it arrives sideways. This gives
-## it a moment to clear the hatchery under seek alone, then hands it over.
-##
-## Brief on purpose. It exists to stop new units looking wrong for their first
-## second, not to be a behaviour the player ever thinks about.
+## Gives a new drone a moment to clear the hatchery, then hands it to
+## [member next_state_name].
 class_name LaunchState
 extends State
 
-## Where to go once clear of the hatchery. Follow rather than the swarm's standing
-## order: the global intent state re-asserts the real order on the next frame
-## anyway, so this only has to be somewhere sane to land.
+## Where to go once clear of the hatchery.
 @export var next_state_name: String = "Follow"
 
 ## How far from the hatchery counts as clear.
@@ -23,13 +16,7 @@ extends State
 ## sit in Launch forever.
 @export var timeout_seconds: float = 4.0
 
-## Only separation and the formation pull: a new unit should spread away from
-## the others leaving the hatchery at the same moment, but not yet try to hold a
-## slot it is far too distant to reach.
-# Alignment included so a drone the hatchery has just built leaves matching
-# the heading of the swarm it is joining, rather than setting off on its own
-# vector and having to be pulled into line afterwards. A new unit should look
-# like it belonged to the flock from the moment it appears.
+## Behaviours this state runs.
 const ACTIVE_BEHAVIOURS: Array = ["Avoid", "OffsetPursue", "Separation", "Alignment"]
 
 var _hatchery: Hatchery

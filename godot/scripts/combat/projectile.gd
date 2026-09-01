@@ -1,23 +1,13 @@
 ## A single shot: travels forward, damages the first enemy it reaches, dies.
 ##
-## Deliberately not a physics body. Combat here is dozens of small fast shots
-## between agents that are already doing steering every frame, and adding that
-## many rigid bodies would cost more than the game can spare at forty drones a
-## side. Instead each shot steps forward and tests distance against the units
-## it could plausibly hit -- which for a game with a swarm register is a short
-## list, not a broad-phase query.
-##
-## Frees itself on hit or on timeout. A shot that missed and flew on forever
-## would accumulate until the frame budget went with it.
+## Frees itself on hit or on timeout.
 class_name Projectile
 extends Node3D
 
 ## Emitted when the shot connects, before it frees itself.
 signal hit(target: Node3D, amount: float)
 
-## Which side fired this. A shot never damages its own side, so a swarm firing
-## through itself is harmless rather than a friendly-fire disaster the player
-## cannot avoid.
+## Which side fired this; a shot never damages its own side.
 @export var allegiance: int = 0
 
 ## Damage dealt on contact.
@@ -37,17 +27,10 @@ signal hit(target: Node3D, amount: float)
 ## Core colour of the bolt: orange-red, the hottest part of the shot.
 @export var core_colour: Color = Color(1.0, 0.30, 0.10)
 
-## The caustic green the bolt glows with.
-##
-## The two colours do different jobs. Green is the emission, so it blooms
-## OUTWARD past the geometry and is what carries the shot at 640x360 against a
-## near-black belt. Orange-red is the albedo, so it stays tight in the middle
-## -- and it only reads as heat because there is green around it.
+## The caustic green the bolt glows with: the emission, not the albedo.
 @export var glow_colour: Color = Color(0.42, 1.0, 0.22)
 
-## How hard the bolt blooms. The scene Environment has glow enabled, so an
-## emission above 1.0 spills light past the geometry and a shot two pixels wide
-## still reads as a bolt rather than a dot.
+## Emission multiplier. Needs glow enabled on the scene Environment.
 @export var glow_energy: float = 4.0
 
 var _age: float = 0.0
@@ -57,11 +40,6 @@ var _trail: TrailRibbon
 
 
 ## Replace the hull's lit material with a self-lit one.
-##
-## The hull shader modulates by the angle to the sun, which is right for a
-## ship and wrong for a bolt: a projectile spinning past the camera would
-## flicker as its facets turned. A shot emits its own light, so it should not
-## be lit at all.
 ##
 ## Runs in _ready on the parent, which Godot calls AFTER its children, so this
 ## reliably overwrites the material Hull assigns to itself.
@@ -75,8 +53,7 @@ func _ready() -> void:
 	material.emission_enabled = true
 	material.emission = glow_colour
 	material.emission_energy_multiplier = glow_energy
-	# Drawn over the belt rather than depth-sorted against it: a bolt passing
-	# behind a rock should still be visible as tracer fire.
+	# Drawn over the belt rather than depth-sorted against it.
 	material.cull_mode = BaseMaterial3D.CULL_DISABLED
 	hull.material_override = material
 
@@ -85,11 +62,6 @@ func _ready() -> void:
 
 
 ## A tight ribbon behind the bolt.
-##
-## Narrower and much shorter than a Thruster's. An engine exhaust should
-## billow; a bolt is a few pixels wide at 640x360, and a wide ribbon would
-## swallow the shot inside its own trail. Few points and a thin width keeps it
-## a line the eye can follow back to whoever fired.
 func _build_trail() -> void:
 	_trail = TrailRibbon.new()
 	_trail.name = "Trail"
@@ -107,8 +79,6 @@ func _build_glow() -> void:
 	light.name = "Glow"
 	light.light_color = core_colour
 	light.light_energy = 2.0
-	# Small. A wide light on a fast-moving shot sweeps the whole belt and
-	# reads as the scene flickering rather than as a bolt going past.
 	light.omni_range = 5.0
 	add_child(light)
 
@@ -138,10 +108,6 @@ func _physics_process(delta: float) -> void:
 
 
 ## The nearest enemy within [member hit_radius], or null.
-##
-## Checks the swarm registers and the commander groups rather than the whole
-## tree: those are the only things that can be shot, and both are already
-## maintained for other reasons.
 func _first_hit() -> Node3D:
 	var closest: Node3D = null
 	var closest_distance: float = hit_radius

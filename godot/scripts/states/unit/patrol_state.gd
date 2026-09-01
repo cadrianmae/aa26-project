@@ -1,14 +1,7 @@
 ## Sweep the area around the commander, watching for enemies.
 ##
-## The standing order for a swarm with nothing else to do: spread out, circle,
-## and pick a fight if one comes close. It is the intent that turns the swarm
-## from an escort into a screen.
-##
-## The circling is emergent rather than scripted. Each unit is given a slowly
-## rotating point to arrive at, offset by its own index around the circle, so
-## fifty units distribute themselves around the commander without any of them
-## knowing about the others -- the same trick as the formation slots, applied
-## to a moving target.
+## Each unit arrives at a slowly rotating point, offset by its own phase around
+## the circle.
 class_name PatrolState
 extends State
 
@@ -21,21 +14,17 @@ extends State
 ## Radius of the patrol circle around the commander.
 @export var patrol_radius: float = 60.0
 
-## How fast the circle turns, in radians per second. Slow: the point is to
-## sweep an area, and a fast orbit just makes the swarm dizzy without covering
-## any more ground.
+## How fast the circle turns, in radians per second.
 @export var orbit_speed: float = 0.35
 
 ## How far to look for something to fight. Shorter than EngageState's acquire
-## range, so a patrolling swarm commits only to what comes to it rather than
-## charging across the belt at the first contact.
+## range.
 @export var contact_range: float = 90.0
 
 const ACTIVE_BEHAVIOURS: Array = ["Avoid", "Arrive", "Separation", "Alignment"]
 
 ## A node that carries this unit's patrol point. An ArriveBehaviour steers at
-## a Node3D, so the moving point needs to BE one -- the same reason the rally
-## marker is a node rather than a vector.
+## a Node3D, so the moving point needs to BE one.
 var point: Node3D
 
 ## Where the circle is centred: the commander, or the swarm's rally point.
@@ -58,9 +47,7 @@ func _enter() -> void:
 		point.top_level = true
 		unit.add_child(point)
 
-	# The unit's own place on the circle, derived from its instance id. Any
-	# stable per-unit number works; what matters is that two units never pick
-	# the same one, which a shared counter would risk after respawns.
+	# The unit's own place on the circle, derived from its instance id.
 	_phase = float(unit.get_instance_id() % 360) * TAU / 360.0
 
 	var arrive: ArriveBehaviour = unit.get_node_or_null(

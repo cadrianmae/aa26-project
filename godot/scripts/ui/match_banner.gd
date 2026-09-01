@@ -1,17 +1,7 @@
 ## The end-of-match announcement.
 ##
 ## Listens for [signal MatchState.finished] and draws the result across the
-## screen. Until this existed the match simply stopped: the losing Matriarch
-## exploded, the music changed to VICTORY or DEFEAT, and nothing said which had
-## happened -- so the two most important seconds in the game were the two least
-## legible.
-##
-## Drawn rather than composed from Label nodes, like the rest of this HUD, so
-## it sits in the same 640x360 space as the radar and needs no font asset.
-##
-## The animation is deliberately slow to arrive. A result that snaps up the
-## instant the hull pops competes with the explosion for attention; letting the
-## blast land first and the text follow gives each its own moment.
+## screen.
 class_name MatchBanner
 extends Control
 
@@ -21,19 +11,12 @@ extends Control
 @export_group("Timing")
 
 ## Seconds to wait after the match resolves before the text appears.
-##
-## Long enough for the explosion to read as the cause. Shorter than about half
-## a second and the banner and the blast arrive together and fight.
 @export var delay_seconds: float = 0.9
 
 ## Seconds the text takes to settle once it starts.
 @export var rise_seconds: float = 0.6
 
 ## How far above its resting place the text starts, in pixels.
-##
-## It falls INTO position rather than rising out of one: downward motion
-## settling reads as conclusive, where upward motion reads as something
-## beginning.
 @export var rise_distance: float = 14.0
 
 @export_group("Text")
@@ -63,8 +46,7 @@ func _ready() -> void:
 	_font = ThemeDB.fallback_font
 	# Nothing to draw until the match ends, and no reason to redraw either.
 	set_process(false)
-	# Deferred for the reason everything else here is: MatchState may not have
-	# joined the tree yet when this Control is ready.
+	# Deferred: MatchState may not be in the tree yet.
 	call_deferred("_connect_to_match")
 
 
@@ -93,13 +75,12 @@ func _draw() -> void:
 	if winner < 0:
 		return
 
-	# Held back until the explosion has had its moment.
+	# Held back by delay_seconds.
 	var elapsed: float = _age - delay_seconds
 	if elapsed <= 0.0:
 		return
 
-	# Eased so it decelerates into place: linear motion stopping dead reads as
-	# a jump cut, where easing out reads as settling.
+	# Cubic ease-out.
 	var t: float = clampf(elapsed / maxf(rise_seconds, 0.001), 0.0, 1.0)
 	var eased: float = 1.0 - pow(1.0 - t, 3.0)
 
@@ -119,8 +100,7 @@ func _draw() -> void:
 		HORIZONTAL_ALIGNMENT_CENTER, size.x, title_size, tint
 	)
 
-	# The subtitle trails the title by a beat, so the eye reads them in order
-	# instead of taking both at once.
+	# Subtitle starts half a rise_seconds after the title.
 	var sub_t: float = clampf((elapsed - rise_seconds * 0.5) / maxf(rise_seconds, 0.001), 0.0, 1.0)
 	if sub_t <= 0.0:
 		return

@@ -1,15 +1,6 @@
 ## Terminal state: close on the target, then blow up on it.
 ##
-## A Thargon's last resort, and the swarm's only answer to something too tough
-## to shoot down. Structurally it is also the clearest demonstration of the
-## emergent-membership argument: the unit simply stops existing, its
-## neighbours re-query the spatial hash on the next frame, and the flock
-## re-coheres around the gap with nothing told to do so.
-##
-## Deliberately not reachable from an intent. Detonating is a decision a unit
-## makes about itself -- when it is nearly dead and something worth killing is
-## close -- so the swarm cannot be ordered to spend itself. That keeps the
-## sacrifice emergent rather than commanded.
+## Not reachable from an intent.
 class_name DetonateState
 extends State
 
@@ -29,9 +20,7 @@ extends State
 ## cannot close does not sit armed forever.
 @export var fuse_seconds: float = 6.0
 
-## Separation and obstacle avoidance only: the unit is committed, and cohesion
-## pulling it back toward the flock would fight the run-in. Avoid stays because
-## a unit that flies into a rock on the way to its target has wasted itself.
+## Behaviours this state runs.
 const ACTIVE_BEHAVIOURS: Array = ["Avoid", "Engage", "Separation"]
 
 ## What it is diving at.
@@ -46,8 +35,7 @@ func _enter() -> void:
 	use_only(ACTIVE_BEHAVIOURS)
 
 
-## Nearest enemy, ship or drone. Unweighted, unlike [EngageState]: a unit
-## about to die should spend itself on whatever it can actually reach.
+## Nearest enemy, ship or drone. Unweighted, unlike [EngageState].
 func _acquire() -> void:
 	if unit == null:
 		return

@@ -1,24 +1,6 @@
 ## One side's alloy pool, and the factory that spends it.
 ##
-## The economy's sink and its purpose. Drones deposit here; the pool buys more
-## drones. That loop is the whole reason harvesting matters -- without it the
-## alloy count is a score rather than a resource.
-##
-## Lives ON the Matriarch, as a child node, not as a structure somewhere in
-## the belt. The capital ship IS the hatchery: it grows the drones and they bring
-## their loads back to it. That follows the fiction, and it makes the
-## commander's position a decision -- fly forward and the supply line follows,
-## with every drone's round trip getting shorter or longer accordingly.
-##
-## One Hatchery per allegiance. The rival's is the same script under a different
-## ship, not a special case: [CommanderAI] spends through the same API the
-## player's harvesting fills, so both sides run identical economies and only
-## their decisions differ.
-##
-## Spawning lives here rather than in [Swarm] because they answer different
-## questions. The Swarm knows who is near whom; the Hatchery knows who exists and
-## what they cost. Keeping them apart is what let the Swarm be written before
-## anything could spawn.
+## A child of the Matriarch, so moving the ship moves the drop-off point.
 class_name Hatchery
 extends Node3D
 
@@ -39,15 +21,7 @@ const GROUP_PREFIX: String = "hatchery_"
 
 ## How close a drone must be to deposit.
 ##
-## Tight, and paired with the node sitting BEHIND the Matriarch rather than at
-## its centre. The hull is about 8 units long, so a drone delivering to the
-## ship's middle would be flying through it; delivering to a point off the
-## tail makes the drones queue into the ship's wake, which reads as a supply
-## line instead of as drones vanishing into the hull.
-##
-## Because the node is a child of the ship, the offset rotates with it -- turn
-## the Matriarch and the drop-off swings round to stay astern, with nothing
-## computing that.
+## The node is a child of the ship, so the offset rotates with it.
 @export var deposit_radius: float = 7.0
 
 @export_group("Factory")
@@ -58,17 +32,13 @@ const GROUP_PREFIX: String = "hatchery_"
 ## What one drone costs.
 @export var drone_cost: float = 25.0
 
-## Ceiling on swarm size. The spatial hash is O(n) per frame and the flocking
-## behaviours are capped at ten neighbours each, so this is a frame-budget
-## limit rather than a design one.
+## Ceiling on swarm size. A frame-budget limit, not a design one.
 @export var max_drones: int = 40
 
 ## How far from the hatchery a new drone appears.
 @export var spawn_spread: float = 12.0
 
-## Seconds between build attempts. Not per frame: at 60 Hz a full pool would
-## empty into forty drones inside a second, which reads as a glitch rather
-## than as production.
+## Seconds between build attempts.
 @export var build_interval: float = 1.2
 
 @export_group("Debug")
@@ -85,10 +55,7 @@ var _since_build: float = 0.0
 
 
 func _ready() -> void:
-	# Inherit the ship's side rather than being set twice. A hatchery on the
-	# rival's Matriarch that was left at allegiance 0 would quietly bank the
-	# enemy's alloys into the player's pool, which is the kind of fault that
-	# looks like a balance problem rather than a bug.
+	# Inherit the carrier ship's side rather than setting it in two places.
 	var carrier: Node = get_parent()
 	if carrier != null and "allegiance" in carrier:
 		allegiance = carrier.allegiance
@@ -97,8 +64,7 @@ func _ready() -> void:
 
 ## The hatchery for [param allegiance_id], or null if that side has none.
 ##
-## Static and group-based so a drone spawned at run time can find its hatchery
-## with no wiring. Mirrors [method RallyMarker.for_swarm].
+## Mirrors [method RallyMarker.for_swarm].
 static func for_allegiance(tree: SceneTree, allegiance_id: int) -> Hatchery:
 	var found: Array = tree.get_nodes_in_group(GROUP_PREFIX + str(allegiance_id))
 	if found.is_empty():
@@ -107,9 +73,6 @@ static func for_allegiance(tree: SceneTree, allegiance_id: int) -> Hatchery:
 
 
 ## Add alloys to the pool.
-##
-## Takes what it is given without asking where from, so a drone depositing, a
-## debug command and a future salvage mechanic all use one path.
 func deposit(amount: float) -> void:
 	if amount <= 0.0:
 		return
@@ -144,11 +107,6 @@ func _process(delta: float) -> void:
 
 
 ## Spend one drone's worth of alloys, if there are alloys and room.
-##
-## One per interval rather than draining the pool in a loop: a hatchery that
-## banked a hundred alloys while its drones were away should not answer with
-## four ships at once. Production paced this way also gives the rival hatchery a
-## visible build-up the player can read and respond to.
 func _try_build() -> void:
 	if drone_scene == null:
 		return
@@ -164,10 +122,6 @@ func _try_build() -> void:
 
 
 ## Build one drone and put it in the world, regardless of cost.
-##
-## Separate from [method _try_build] so a test or a debug key can spawn
-## without touching the pool, and so the affordability rule lives in exactly
-## one place.
 func spawn_drone() -> Drone:
 	if drone_scene == null:
 		return null
@@ -177,8 +131,7 @@ func spawn_drone() -> Drone:
 		return null
 
 	# Allegiance and swarm are set BEFORE the node enters the tree, because
-	# Drone._ready() registers itself using them -- assigning afterwards
-	# would leave the drone registered to the wrong swarm, or to none.
+	# Drone._ready() registers itself using them.
 	drone.allegiance = allegiance
 	_resolve_swarm()
 	drone.swarm = _swarm
@@ -197,11 +150,8 @@ func spawn_drone() -> Drone:
 
 ## Where new drones are parented.
 ##
-## A SIBLING of the Matriarch, never a child of it. The hatchery rides on the
-## ship, so parenting drones to the hatchery would make them children of the ship
-## too -- and they would then inherit its transform, flying in rigid lockstep
-## with it however hard their own steering pushed. The whole swarm would move
-## as one object.
+## A SIBLING of the Matriarch, never a child: children inherit its
+## transform and the whole swarm would move as one object.
 func _drone_container() -> Node:
 	var carrier: Node = get_parent()
 	if carrier != null and carrier.get_parent() != null:
@@ -212,7 +162,6 @@ func _drone_container() -> Node:
 ## Put a newly built drone into LaunchState.
 ##
 ## Deferred, because the drone's StateMachine enters its initial state in a
-## deferred call of its own -- changing state before that lands would be
-## immediately overwritten by the scene's initial_state.
+## deferred call -- changing state before that lands would be overwritten.
 func _launch(drone: Drone) -> void:
 	drone.get_node("StateMachine").call_deferred("change_state_named", "Launch")

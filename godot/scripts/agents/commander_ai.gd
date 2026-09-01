@@ -1,24 +1,12 @@
 ## The rival hatchery's commander: a second player with a script instead of a
 ## keyboard.
 ##
-## Deliberately issues orders through [method Swarm.order], the SAME call the
-## player's hotkeys make. The enemy is not a special case with privileged
-## access to the world -- it reads what the player could read and commands
-## what the player could command, so a win against it means something.
-##
-## It decides INTENT, not behaviour. Which state a drone actually enters is
-## still [SwarmIntentState]'s answer, per unit, and the flee reflex still
-## overrides everything. So even the AI's swarm keeps its autonomy: the
-## commander says "harvest" and the drones work out what that means from where
-## they each happen to be.
-##
-## Sampled on an interval rather than per frame. An AI that re-decided sixty
-## times a second would thrash between intents on the boundary of a condition,
-## and the swarm would visibly twitch instead of committing to anything.
+## Decides INTENT, not behaviour: [SwarmIntentState] still resolves what each
+## unit does, and the flee reflex still overrides it.
 class_name CommanderAI
 extends Node
 
-## Emitted when the AI changes its mind, for the write-up and for gizmos.
+## Emitted when the AI changes its mind.
 signal decided(intent: Swarm.Intent)
 
 ## Which side this commands.
@@ -32,20 +20,9 @@ signal decided(intent: Swarm.Intent)
 @export var harvest_range: float = 700.0
 
 ## Below this many drones the hatchery is considered too weak to fight.
-##
-## Raised from 8: with the match opening at five drones, eight put the rival
-## at 0.62 readiness on the first decision, which was enough to reach for
-## ENGAGE immediately. Fourteen means an opening swarm sits near 0.36 and has
-## to be grown before the commander will consider a fight.
 @export var minimum_war_swarm: int = 14
 
-## Below this fraction of starting health the commander disengages.
-@export_range(0.0, 1.0) var retreat_health_fraction: float = 0.35
-
 ## Which personality to play with. See [CommanderProfiles].
-##
-## A future opponent is a new function there and a new name here -- the
-## scoring machinery does not change.
 @export var profile_name: StringName = &"escalating"
 
 @export_group("Debug")
@@ -54,18 +31,10 @@ signal decided(intent: Swarm.Intent)
 @export var log_decisions: bool = false
 
 ## Print every intent's score, not just the winner.
-##
-## A utility system is opaque from outside: it names a winner and says nothing
-## about why. This is how a demo shows the reasoning, and how a bad decision
-## gets diagnosed as a bad WEIGHT rather than a bug.
 @export var log_scores: bool = false
 
 ## Draw the commander's reasoning in the world: its intent, every option's
 ## score, and the point it is steering at.
-##
-## The console logs above answer the same questions but only for whoever is
-## watching stdout. This puts the reasoning on screen, where it can be seen in
-## a recording.
 @export var draw_gizmos: bool = true
 
 ## Resolved on first use, never in _ready(): Godot readies siblings in scene
@@ -76,14 +45,11 @@ var ship: Ship
 
 ## Where the rival commander is currently steering.
 ##
-## A world-space marker rather than a position handed to the behaviour,
-## because [ArriveBehaviour] targets a [Node3D] -- the same shape the player's
-## rally marker uses.
+## A Node3D because [ArriveBehaviour] targets a node, not a position.
 var move_marker: Node3D
 
 ## The rival's own steering. Disabled in the scene, because the player's
-## commander instances the SAME scene and must not be steered by anything but
-## the player.
+## commander instances the SAME scene.
 var arrive: SteeringBehaviour
 
 ## The commander's own ship health when first seen, so "hurt" is a proportion
@@ -94,10 +60,6 @@ var full_health: float = 0.0
 var current_intent: Swarm.Intent = Swarm.Intent.HOLD
 
 ## The personality this commander plays with.
-##
-## Built on ready from [member profile_name]. Swapping it swaps the opponent
-## entirely, with no code path between the two: the scorer is the same, only
-## the table it reads changes.
 var profile: UtilityProfile
 
 var _since_decision: float = 0.0
@@ -108,10 +70,6 @@ func _ready() -> void:
 
 
 ## Look up the named profile.
-##
-## A match rather than a dictionary of callables, so a typo is a compile-time
-## complaint about an unknown identifier instead of a silent fallback that
-## makes the enemy inexplicably passive.
 func _build_profile() -> UtilityProfile:
 	match profile_name:
 		&"escalating":
@@ -125,9 +83,8 @@ func _build_profile() -> UtilityProfile:
 
 
 func _process(delta: float) -> void:
-	# Resolved and drawn EVERY frame, before the interval gate below. The
-	# commander only decides every decision_interval, but a display that
-	# appeared for one frame every 2.5 seconds would be unreadable.
+	# Every frame, before the interval gate: a display that appeared for one
+	# frame every decision_interval would be unreadable.
 	_resolve()
 	_process_gizmos()
 
@@ -148,9 +105,7 @@ func _process(delta: float) -> void:
 
 	var intent: Swarm.Intent = decide()
 
-	# Moved every decision, even when the intent has not changed: the world
-	# has, and a commander that only re-steers on a change of mind would sit
-	# still while its barnacle was stripped.
+	# Re-steered every decision, not only on a change of intent.
 	if move_marker != null:
 		move_marker.global_position = move_destination(intent)
 
@@ -179,14 +134,9 @@ func _resolve() -> void:
 	if ship != null and move_marker == null:
 		move_marker = ship.get_node_or_null("MoveTarget") as Node3D
 		arrive = ship.get_node_or_null("CommanderArrive") as SteeringBehaviour
-		# Switched on here rather than in the scene: this script only ever
-		# runs on the rival, so enabling it here is what guarantees the
-		# player's identical ship is never steered for them.
-		#
-		# The target is wired here too, for the reason PlayerSteeringBehaviour
-		# gives about its camera: a NodePath written into commander_ship.tscn
-		# arrives as null once the scene is instanced into main.tscn. Assigning
-		# it in code needs no scene wiring and cannot be pruned.
+		# Enabled and targeted in code, not in the scene: the player instances the
+		# same scene, and a NodePath in commander_ship.tscn arrives null once
+		# instanced into main.tscn.
 		if arrive != null:
 			arrive.enabled = true
 			arrive.set("target", move_marker)
@@ -202,25 +152,10 @@ func alloys() -> float:
 	return hatchery.alloys if hatchery != null else 0.0
 
 
-## Whether the commander's own ship is badly hurt.
-func is_hurt() -> bool:
-	if ship == null or full_health <= 0.0:
-		return false
-	return ship.health / full_health < retreat_health_fraction
-
-
 ## The nearest Barnacle with alloys left, or null when the belt is stripped.
 func nearest_barnacle() -> Barnacle:
 	var from: Vector3 = ship.global_position if ship != null else Vector3.ZERO
 	return Barnacle.nearest_to(get_tree(), from)
-
-
-## Whether any Barnacle is close enough to be worth working.
-func has_reachable_barnacle() -> bool:
-	var barnacle: Barnacle = nearest_barnacle()
-	if barnacle == null or ship == null:
-		return false
-	return ship.global_position.distance_to(barnacle.global_position) <= harvest_range
 
 
 ## The nearest enemy unit, or null.
@@ -255,13 +190,7 @@ func rally_point() -> Vector3:
 
 ## Everything the profile can reason about, normalised to 0..1.
 ##
-## Gathered once per decision and handed over as data. The profile never
-## touches the world -- it sees only these numbers -- which is what lets a
-## different personality be a different table rather than different code.
-##
-## Normalised because a consideration's curve is written against 0..1. Raw
-## values would tie every curve to whatever units it happened to be given, and
-## a profile tuned on one map would be wrong on the next.
+## Normalised because a consideration's curve is written against 0..1.
 func gather_inputs() -> Dictionary:
 	var barnacle: Barnacle = nearest_barnacle()
 	var enemy: Node3D = nearest_enemy()
@@ -324,11 +253,6 @@ func decide() -> Swarm.Intent:
 
 
 ## Where the commander should physically fly, given the intent it just chose.
-##
-## Separate from [method decide] on purpose. The intent says what the hive is
-## doing; this says where the ship has to BE for that to work -- and because
-## the hatchery rides on the ship, those are not the same question. A commander
-## that picks HARVEST but parks a kilometre from the barnacle harvests nothing.
 func move_destination(intent: Swarm.Intent) -> Vector3:
 	if ship == null:
 		return Vector3.ZERO
@@ -350,23 +274,14 @@ func move_destination(intent: Swarm.Intent) -> Vector3:
 
 ## Draw what the commander is thinking.
 ##
-## The rival is the most sophisticated thing in the project and, until this,
-## the least visible: a utility system names a winner and says nothing about
-## why, so from outside it is indistinguishable from a script picking at
-## random. Everything below exists to make the decision legible while it is
-## being made -- to a player, to a marker, and to whoever is debugging a
-## commander that has decided to do something strange.
-##
-## Drawn every frame although the AI only decides every decision_interval, so
-## the display is continuous rather than blinking once every 2.5 seconds.
+## Drawn every frame, though decisions are made on decision_interval.
 func _process_gizmos() -> void:
 	if not draw_gizmos or ship == null:
 		return
 
 	var at: Vector3 = ship.global_position
 
-	# The standing intent, above the ship. Colour carries urgency so the state
-	# is readable without stopping to read the word.
+	# The standing intent, above the ship.
 	DebugDraw3D.draw_text(
 		at + Vector3(0.0, 14.0, 0.0),
 		Swarm.Intent.keys()[current_intent],
@@ -375,15 +290,11 @@ func _process_gizmos() -> void:
 	)
 
 	# Where the commander is steering, and the line it is taking to get there.
-	# A commander that has picked HARVEST but is flying nowhere near a Barnacle
-	# is the failure this makes obvious at a glance.
 	if move_marker != null:
 		DebugDraw3D.draw_line(at, move_marker.global_position, Color(1.0, 0.85, 0.4, 0.6))
 		DebugDraw3D.draw_sphere(move_marker.global_position, 6.0, Color(1.0, 0.85, 0.4))
 
-	# Every option's score, not just the winner. This is the whole argument for
-	# a utility system over a state machine: the reasoning is a set of numbers
-	# rather than a branch, so it can be shown.
+	# Every option's score, not just the winner.
 	if profile == null:
 		return
 	var scores: Dictionary = profile.explain(gather_inputs(), current_intent)

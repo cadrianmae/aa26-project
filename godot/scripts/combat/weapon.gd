@@ -1,13 +1,6 @@
 ## Fires projectiles at a target, on a cooldown.
 ##
-## A Node child of whatever carries it, like the steering behaviours, so a
-## drone and a capital ship mount the same component with different numbers
-## rather than each having its own firing code.
-##
-## Knows nothing about who to shoot. [EngageState] chooses the target and asks
-## this to fire; the weapon only decides whether it is ready and where the
-## shot goes. Keeping target selection out of here is what lets the player's
-## ship and an autonomous drone share it.
+## Knows nothing about who to shoot: the caller supplies the target.
 class_name Weapon
 extends Node3D
 
@@ -26,17 +19,9 @@ signal fired(at: Node3D)
 ## 1 is a single shot. Above that the weapon fires a BURST: that many rounds
 ## spaced by [member burst_interval], then the full cooldown before the next
 ## burst is allowed.
-##
-## A burst carries information a stream of evenly-spaced shots does not. Three
-## rounds arriving together read as one deliberate attack, and the silence
-## afterwards is what makes the rhythm legible -- the player can hear and see
-## when they are between bursts and therefore vulnerable.
 @export_range(1, 10) var burst_count: int = 1
 
 ## Seconds between the rounds WITHIN a burst.
-##
-## Much shorter than the cooldown, or the burst stops reading as one event and
-## becomes three separate shots.
 @export var burst_interval: float = 0.09
 
 ## Damage per shot, passed to the projectile.
@@ -51,20 +36,11 @@ signal fired(at: Node3D)
 
 ## Fire along the agent's nose rather than at the target.
 ##
-## A drone's weapon is bolted to its hull: it cannot swivel, so the drone has
-## to be POINTED at what it wants to hit. That single constraint is what makes
-## the attack run a tactic rather than a decoration -- a gimballed drone can
-## orbit at a comfortable distance and keep shooting forever, where a fixed
-## mount only bears during the run-in and goes dark on the way out.
-##
-## The commander's weapon leaves this off. A capital ship carries turrets, and
-## its pilot is already constrained by [PlayerGunner]'s own firing arc.
+## The commander's weapon leaves this off; it is constrained by
+## [PlayerGunner]'s own firing arc instead.
 @export var fixed_mount: bool = false
 
 ## Half-angle the nose must be within for a fixed mount to fire, in degrees.
-##
-## Narrow. A wide arc would let a drone shoot while merely facing the general
-## direction, which brings back the orbiting it exists to prevent.
 @export_range(1.0, 90.0) var mount_arc_degrees: float = 18.0
 
 @export_group("Debug")
@@ -82,9 +58,6 @@ var _cooldown_left: float = 0.0
 var _burst_left: int = 0
 
 ## The target the burst was started against.
-##
-## Held so the remaining rounds go where the burst was aimed even if the
-## caller stops asking -- a burst is one committed action, not three decisions.
 var _burst_target: Node3D
 
 ## Kept only so the gizmo can draw what was last shot at.
@@ -120,10 +93,7 @@ func in_range(target: Node3D) -> bool:
 
 ## Fire at [param target] if ready and in range. Returns whether a shot left.
 ##
-## Aimed at where the target IS, not where it will be. Lead would be more
-## effective and less readable: shots that visibly converge on a moving drone
-## look like the game cheating, where shots that trail behind read as a fight
-## the player can follow.
+## Aimed at where the target IS, not where it will be: no lead.
 func fire_at(target: Node3D) -> bool:
 	if target == null or agent == null or not is_ready() or not in_range(target):
 		return false
@@ -152,9 +122,7 @@ func fire_at(target: Node3D) -> bool:
 		# Refuse the shot unless the hull is already pointed at the target.
 		if rad_to_deg(nose.angle_to(direction)) > mount_arc_degrees:
 			return false
-		# And fire down the nose rather than at the target: a fixed gun cannot
-		# lead or correct, so a shot taken slightly off-axis MISSES. That is
-		# the honest behaviour, and it is what rewards a well-aimed pass.
+		# Fire down the nose: a fixed gun cannot lead or correct.
 		direction = nose
 
 	# Added to the scene root rather than to the firing agent: a shot parented
@@ -182,10 +150,6 @@ func fire_at(target: Node3D) -> bool:
 
 
 ## Continue a burst already in progress, without the caller having to ask.
-##
-## Once a burst starts it finishes on its own, so a player who taps fire still
-## gets all three rounds: a burst is one committed action, not a test of how
-## long they can hold the key.
 func _continue_burst() -> void:
 	if _burst_left <= 0 or _cooldown_left > 0.0:
 		return

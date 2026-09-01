@@ -2,14 +2,10 @@
 ##
 ## Adapted from Duggan, miniature-rotary-phone/behaviors/separation.gd:16-22.
 ##
-## The falloff is INVERSE distance, 1/d, not inverse-square. The expression
-## away.normalized() / away.length() is away / |away| squared, whose MAGNITUDE
-## is 1/|away|. It reads as inverse-square because of the squared denominator;
-## it is not. Closer neighbours dominate, and deliberately so.
+## The falloff is INVERSE distance, 1/d, not inverse-square: the magnitude of
+## away.normalized() / away.length() is 1/|away|.
 ##
-## The sum is neither normalised nor divided by the neighbour count, unlike
-## cohesion. A unit in a tight cluster gets a genuinely larger escape force,
-## which is the point. Truncation is left to the agent's WTPRS max_force clamp.
+## The sum is neither normalised nor divided by the neighbour count.
 class_name SeparationBehaviour
 extends SteeringBehaviour
 

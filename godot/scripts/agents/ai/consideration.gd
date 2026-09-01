@@ -5,11 +5,8 @@
 ## this given my swarm size?" -- and knows nothing about the action it serves
 ## or the others alongside it.
 ##
-## Multiplied rather than averaged, following Dave Mark's Infinite Axis
-## Utility System. Multiplication means any single consideration can VETO an
-## action by scoring zero, which is what lets "there is no enemy" rule out
-## attacking without a special case. An average would let a strong swarm
-## outvote the absence of anything to fight.
+## Scores are multiplied, not averaged, so any single consideration can VETO
+## an action by scoring zero.
 ##
 ## Reference: Mark, D., "Building a Better Centaur: AI at Massive Scale" and
 ## the Infinite Axis Utility System, presented at GDC. See ATTRIBUTIONS.md.
@@ -19,12 +16,7 @@ extends RefCounted
 ## How an input is mapped to a score.
 ##
 ## Named Response, not Curve: Curve is a built-in Godot class, and an enum of
-## that name shadows it. The symptom is misleading -- every other script that
-## referenced this file failed with "Could not resolve external class member",
-## pointing at the reference rather than at the shadowing declaration.
-##
-## Response is also the term the utility-AI literature uses for exactly this:
-## the response curve mapping an input to a score.
+## that name shadows it. Do not rename.
 enum Response {
 	## Straight through: 0 stays 0, 1 stays 1.
 	LINEAR,
@@ -32,8 +24,7 @@ enum Response {
 	## more I want to retreat."
 	INVERSE,
 	## Rises slowly then sharply. Something that only matters once it is
-	## nearly satisfied -- a swarm at 40% strength is not nearly half as
-	## ready to fight as one at 80%.
+	## nearly satisfied.
 	QUADRATIC,
 	## Falls sharply then slowly. Urgent early, indifferent later.
 	INVERSE_QUADRATIC,
@@ -45,13 +36,10 @@ enum Response {
 ## Which value from the AI's input set this reads.
 var input: StringName
 
-## How that value maps to a score. One of [enum Curve].
+## How that value maps to a score. One of [enum Response].
 ##
-## Typed int rather than Curve because GDScript cannot resolve an external
-## class's enum in a parameter annotation -- another script writing
-## `Consideration.Curve` as a type fails to parse with "Could not resolve
-## external class member". The values are the enum's, the annotation is just
-## its underlying type.
+## Typed int, not Response: GDScript cannot resolve an external class's enum
+## in a type annotation.
 var curve: int
 
 ## Where the input is treated as 0.0. Values below clamp to it.
@@ -70,10 +58,7 @@ var floor_value: float
 
 ## Build one, as a static factory rather than a parameterised _init.
 ##
-## GDScript cannot resolve another class's custom constructor from a static
-## function -- CommanderProfiles calling Consideration.new(args) fails to
-## parse with "Could not resolve external class member _init". A static
-## factory is reached the same way any other static method is, and works.
+## GDScript cannot reach another class's _init from a static function.
 static func make(
 	input_name: StringName,
 	curve_type: int = 0,
@@ -94,9 +79,7 @@ static func make(
 
 ## Score this consideration against a set of named inputs.
 ##
-## A missing input scores 0.0 rather than erroring: a profile that names an
-## input the AI does not supply should make its action unattractive, not crash
-## the game mid-match.
+## A missing input scores 0.0.
 func score(inputs: Dictionary) -> float:
 	if not inputs.has(input):
 		return 0.0

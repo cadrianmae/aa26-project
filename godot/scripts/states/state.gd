@@ -30,18 +30,11 @@ func _think() -> void:
 
 
 ## Behaviours that stay on in EVERY state.
-##
-## Wander is here rather than in each state's list because it is not part of
-## any state's job -- it is what stops the swarm settling into a lattice when
-## the other forces cancel. Adding it to nine separate lists would mean nine
-## chances to forget it, and a state that forgot would visibly freeze its
-## units while the others drifted.
 const ALWAYS_ON: Array = ["Wander"]
 
 
 ## Enable exactly the named behaviours on the unit and disable the rest.
 ##
-## Shared helper because every state's _enter is otherwise the same five lines.
 ## Matching is by node name, so the scene tree stays the single place that says
 ## which behaviours a unit has.
 func use_only(behaviour_names: Array) -> void:

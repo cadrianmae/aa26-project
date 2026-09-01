@@ -1,13 +1,6 @@
 ## The hive's Meta-Alloy count, and what it can afford.
 ##
-## Top-right, opposite the radar. The radar answers "where is everything"; this
-## answers "what can I do about it", and the two are the only numbers the
-## player needs to make a decision.
-##
-## Shows progress toward the next drone as well as the raw total, because the
-## total on its own is meaningless -- 40 alloys means nothing until you know a
-## drone costs 25. The bar is what turns a number into a decision about
-## whether to press on or pull back and harvest.
+## Draws the raw total and a segmented bar of progress toward the next drone.
 class_name ResourceReadout
 extends Control
 
@@ -21,8 +14,7 @@ extends Control
 @export var alloy_colour: Color = Color(0.62, 0.82, 0.23)
 @export var bar_empty_colour: Color = Color(0.435, 0.812, 0.353, 0.22)
 
-## Segments in the "next drone" bar, matching the radar's speed gauge so the
-## two read as parts of one instrument panel.
+## Segments in the "next drone" bar.
 @export var segments: int = 10
 
 var _hatchery: Hatchery
@@ -77,8 +69,7 @@ func _draw() -> void:
 
 	# Progress toward the next drone, as segments.
 	var fraction: float = clampf(fposmod(alloys, cost) / cost, 0.0, 1.0)
-	# A full pool that simply cannot spend -- swarm at its cap -- should read
-	# as full rather than as empty, or the player thinks nothing is happening.
+	# At the drone cap the bar reads full, not empty.
 	if _swarm != null and _swarm.units.size() >= _hatchery.max_drones:
 		fraction = 1.0
 	var lit: int = int(round(fraction * segments))

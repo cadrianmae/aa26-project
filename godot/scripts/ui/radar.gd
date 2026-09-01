@@ -1,22 +1,9 @@
-## A tilted radar disc with a heading arc wrapping over it.
+## A tilted radar disc with a heading arc wrapping over it. The tilt matches
+## the game camera's own angle.
 ##
-## Modelled on Elite Dangerous's radar: a circular scope seen at an angle
-## rather than a flat overhead map, so it reads as a physical instrument in
-## the cockpit instead of a menu drawn on the screen. The tilt matches the
-## game camera's own angle, which makes the disc feel like a scale model of
-## what the player is looking at.
-##
-## FIXED NORTH, not camera-relative. Up on the disc is always world -Z, so a
-## place stays in the same part of the scope however the camera is turned.
-## That is the same argument the stepped 45-degree camera rests on: the
-## player's sense of where things ARE is most of what both are for, and a
-## scope that spins destroys it. The heading arc is the other half of that
-## trade -- it says which way the camera currently faces, so the two together
-## answer "where is it" and "which way do I turn".
-##
-## Drawn with _draw() rather than assembled from textures, matching how the
-## hulls are built from vertex lists: the look is vector shapes and flat
-## colour, and drawing it needs no art pipeline.
+## CAMERA-RELATIVE. The disc turns with the camera, so up on the scope is
+## always the direction the camera faces. A north marker on the rim gives the
+## world reference, and the heading arc reports the camera's world bearing.
 class_name Radar
 extends Control
 
@@ -34,49 +21,29 @@ extends Control
 
 ## Disc radius as a fraction of the control's width.
 ##
-## Everything else is sized RELATIVE to this -- the heading arc at 1.13, its
-## labels at 1.22, the speed bar at 1.12 -- so the widest thing drawn reaches
-## about 1.3 disc radii from the centre. The ratio therefore has to stay under
-## 1 / 2.6 or the instrument draws outside its own control, and a Control does
-## not clip its own drawing: it spills across the screen rather than being cut
-## off at the panel edge.
+## Everything else is sized relative to this, out to about 1.3 disc radii. The
+## ratio has to stay under 1 / 2.6 or the instrument draws outside its own
+## control, and a Control does not clip its own drawing.
 @export_range(0.1, 0.6) var disc_radius_ratio: float = 0.33
 
 ## Where the disc centre sits vertically, as a fraction of the height.
-##
-## Above the middle, because the disc is squashed to cos(45) but the arc and
-## labels above it are not -- so the instrument needs more room over the disc
-## than under it.
 @export_range(0.0, 1.0) var disc_centre_ratio: float = 0.50
 
 ## Radius of the heading arc, relative to the disc radius.
 ##
-## Set well clear of the rim. The arc and the disc are different instruments
-## -- one says which way you face, the other where things are -- and drawn
-## close together they read as one crowded ring. The gap is what separates
-## them.
-##
 ## Constrained by the control's half-width, since the tick labels sit a
-## further 1.12 out and Controls do not clip their own drawing: overflow
-## paints across the screen rather than being cut off at the panel edge.
+## further 1.12 out and Controls do not clip their own drawing.
 @export var arc_radius_ratio: float = 1.30
 
-## How many degrees of heading the arc spans.
-##
-## 90 rather than a full 180. The arc's job is to say where the camera points
-## and roughly what lies either side of that -- a wider sweep runs down the
-## disc's flanks, crowds the scope and collides with the speed bar. Anything
-## outside this span is off the arc, which is information in itself: it is
-## well off to one side or behind you.
+## How many degrees of heading the arc spans. Anything outside this span is
+## off the arc entirely.
 @export var arc_span_degrees: float = 90.0
 
 ## How much SCREEN arc the band physically occupies, in degrees.
 ##
 ## Separate from arc_span_degrees, and the distinction matters: that one says
 ## how many degrees of HEADING fit on the band, this says how long the band
-## LOOKS. The first version hard-coded the screen sweep at 180 degrees, so
-## narrowing the heading span only zoomed the scale in -- the arc stayed a
-## half circle however it was tuned.
+## LOOKS.
 @export var arc_screen_span_degrees: float = 104.0
 
 ## Colour of the north marker on the disc rim.
@@ -85,18 +52,12 @@ extends Control
 @export_group("Speed bar")
 
 ## How many segments the speed bar is cut into.
-##
-## Segmented rather than continuous, following Elite Dangerous: discrete
-## blocks are readable at a glance and in peripheral vision, where a smoothly
-## sliding bar is not. At 640x360 a continuous fill would also be about twenty
-## pixels of gradient, which reads as a smudge.
 @export var speed_segments: int = 12
 
 ## Where the gauge's ZERO and FULL ends sit, in screen degrees clockwise from
 ## straight up.
 ##
-## Wraps the disc's right-hand side, filling upward: zero low and full high,
-## because rising-equals-more is what every physical gauge trains.
+## Wraps the disc's right-hand side, filling upward: zero low, full high.
 ##
 ## The full end stops short of the heading arc, which occupies the top
 ## arc_screen_span_degrees / 2 either side of vertical. The two share the ring
@@ -110,9 +71,7 @@ extends Control
 
 ## Metres per world unit, for the readout.
 ##
-## The project's scale: the Farragut wreck is 2040 m and 510 units long. The
-## gauge reports metres per second because "18" means nothing to a player and
-## "72 m/s" means something.
+## The project's scale: the Farragut wreck is 2040 m and 510 units long.
 @export var metres_per_unit: float = 4.0
 
 ## Half-width of a segment block, in pixels. The block is drawn twice this
@@ -127,8 +86,7 @@ extends Control
 @export var drone_colour: Color = Color(0.435, 0.812, 0.353, 0.9)
 @export var fleeing_colour: Color = Color(1.0, 0.42, 0.30)
 
-## The rival hive, in its amber gold. Same palette as its hulls, so a blip on
-## the scope and a ship on screen are recognisably the same faction.
+## The rival hive's amber.
 @export var rival_colour: Color = Color(0.851, 0.643, 0.255)
 @export var rock_colour: Color = Color(0.42, 0.39, 0.34)
 @export var wreck_colour: Color = Color(0.62, 0.62, 0.66, 0.85)
@@ -141,16 +99,13 @@ extends Control
 ## Lock ring colour when the target is a Barnacle rather than an enemy.
 @export var barnacle_lock_colour: Color = Color(0.62, 0.82, 0.23)
 
-## Cardinal bearings. North is world -Z, matching the disc's fixed-north
-## convention so the arc and the scope agree about which way is up.
+## Cardinal bearings, in world degrees clockwise from north. North is world -Z.
 const CARDINALS: Dictionary = {
 	0.0: "N", 45.0: "NE", 90.0: "E", 135.0: "SE",
 	180.0: "S", 225.0: "SW", 270.0: "W", 315.0: "NW",
 }
 
-## How many segments approximate the disc and the arc. Low on purpose: at
-## 640x360 a smoother curve is not visible, and a slightly faceted rim suits
-## the rest of the game's geometry.
+## How many segments approximate the disc and the arc.
 const CURVE_SEGMENTS: int = 36
 
 var _targeting: Targeting
@@ -171,14 +126,11 @@ func _process(_delta: float) -> void:
 
 
 ## Resolved on first draw, never in _ready(). Godot readies siblings in scene
-## order, so this Control can be ready before the world it reports on. The
-## project has been bitten by that three times.
+## order, so this Control can be ready before the world it reports on.
 func _resolve() -> void:
 	var tree: SceneTree = get_tree()
-	# Cleared when freed, not merely when null. A commander is removed from
-	# the scene on death now, and a cached reference to a freed node is NOT
-	# null -- reading global_position off one throws. Clearing it here also
-	# lets the lookup below find a replacement if one ever exists.
+	# Cleared when freed, not merely when null: a cached reference to a freed
+	# node is NOT null, and reading global_position off one throws.
 	if _ship != null and not is_instance_valid(_ship):
 		_ship = null
 	if _camera != null and not is_instance_valid(_camera):
@@ -203,26 +155,13 @@ func _disc_radius() -> float:
 	return size.x * disc_radius_ratio
 
 
-## Vertical squash from the viewing angle. cos(tilt) is the foreshortening a
-## circle undergoes when viewed at that angle, which is what turns the disc
-## into an ellipse rather than an arbitrary squash.
+## cos(tilt): the foreshortening a circle undergoes at that angle.
 func _squash() -> float:
 	return cos(deg_to_rad(tilt_degrees))
 
 
-## How far the disc is turned, in radians.
-##
-## Camera-relative rather than world-aligned: the disc turns as the camera
-## does, so "up" on the scope is always the direction the player is looking.
-## A world-aligned scope forces the player to redo that rotation in their head
-## on every yaw, which is exactly the work an instrument should do for them.
-##
-## No half-turn offset: with the east-west mirror in [method _position_to_disc]
-## the scope already reads the right way up, and the extra 180 an earlier
-## version carried put it back upside down. A mirror and a half turn are easy
-## to confuse for one another when only one heading is checked -- they differ
-## on the OTHER axis, which is why this needed both a mirror and no rotation
-## rather than one or the other.
+## How far the disc is turned, in radians: the negated camera heading, so the
+## disc turns with the camera. No half-turn offset.
 func _disc_turn() -> float:
 	return -deg_to_rad(_camera_heading())
 
@@ -230,28 +169,15 @@ func _disc_turn() -> float:
 ## A world POSITION, in disc space, before the squash.
 ##
 ## World XZ straight through, turned by the camera heading and nothing else.
-##
-## Neither axis is negated, and that matters beyond tidiness: no negation means
-## no reflection, so the scope keeps the handedness of the world and a heading
-## run through it swings the same way the ship does. Every version of this that
-## mirrored ONE axis needed a second correction somewhere else to undo the
-## reversed turn sense; this needs none, which is why
-## [method _direction_to_disc] can simply defer to it.
+## Neither axis is negated, so the scope keeps the handedness of the world.
 func _position_to_disc(x: float, z: float) -> Vector2:
 	return Vector2(x, z).rotated(_disc_turn())
 
 
 ## A world DIRECTION, in disc space, before the squash.
 ##
-## The SAME mapping as [method _position_to_disc], and that is the point: a
-## heading has to land where the place it points to lands, or the player's
-## arrow disagrees with the contact they are flying at.
-##
-## Kept as its own function despite being identical, because the two are asked
-## different questions -- "where is this thing" and "which way is this facing"
-## -- and an earlier version did make them differ. It did not survive contact
-## with the ship's own debug readout: the arrow ran backwards, moving 70
-## degrees anticlockwise for every 90 the ship turned clockwise.
+## The SAME mapping as [method _position_to_disc]: a heading has to land where
+## the place it points to lands.
 func _direction_to_disc(x: float, z: float) -> Vector2:
 	return _position_to_disc(x, z)
 
@@ -259,12 +185,10 @@ func _direction_to_disc(x: float, z: float) -> Vector2:
 ## World position to a point on the tilted disc.
 func _to_disc(world: Vector3) -> Vector2:
 	var radius: float = _disc_radius()
-	# _position_to_disc has already turned it. Rotating again here would apply
-	# the camera heading TWICE, which is what left the contacts a half turn
-	# away from the arrow.
+	# _position_to_disc has already turned it: rotating again here would apply
+	# the camera heading twice.
 	var offset: Vector2 = _position_to_disc(world.x, world.z) / world_radius * radius
-	# Clamp to the rim rather than letting contacts escape the scope: an
-	# instrument that draws outside its own bezel reads as broken.
+	# Clamped to the rim so contacts cannot escape the scope.
 	if offset.length() > radius:
 		offset = offset.normalized() * radius
 	return _disc_centre() + Vector2(offset.x, offset.y * _squash())
@@ -284,10 +208,8 @@ func _draw() -> void:
 
 ## A ring around the targeted contact's blip.
 ##
-## The same lock the world ring draws, reported on the scope. A player
-## checking the radar should not have to look back at the world to remember
-## which contact they hold -- and when the target is off the disc, the blip is
-## clamped to the rim, so the ring doubles as a bearing to it.
+## When the target is off the disc the blip is clamped to the rim, so the ring
+## doubles as a bearing to it.
 func _draw_target_lock() -> void:
 	if _targeting == null or _targeting.current == null:
 		return
@@ -301,8 +223,6 @@ func _draw_target_lock() -> void:
 		else rival_colour
 	)
 
-	# Two rings and four ticks, rather than one circle: a lone circle at this
-	# size is indistinguishable from another contact.
 	draw_circle(at, 5.5, tint, false, 1.0)
 	draw_circle(at, 3.0, Color(tint, 0.5), false, 1.0)
 	for i in 4:
@@ -313,10 +233,7 @@ func _draw_target_lock() -> void:
 
 ## A segmented speed gauge wrapping the disc's right-hand side.
 ##
-## Reads the ship's actual velocity against its max_speed rather than the
-## thrust input, so it reports what the Matriarch is DOING. Those differ
-## whenever the ship is turning, drifting, or fighting its own damping, and
-## the difference is exactly what a pilot needs to see.
+## Reads actual velocity against max_speed, not thrust input.
 func _draw_speed_bar() -> void:
 	if _ship == null or not ("max_speed" in _ship):
 		return
@@ -329,9 +246,8 @@ func _draw_speed_bar() -> void:
 	var radius: float = _disc_radius() * speed_bar_radius_ratio
 	var squash: float = _squash()
 
-	# How far up the gauge the fill has reached, in segments. Fractional: the
-	# leading segment is drawn PARTLY lit rather than switching on all at
-	# once, so acceleration reads as continuous rather than as a ratchet.
+	# How far up the gauge the fill has reached, in segments. Fractional, so the
+	# leading segment is drawn partly lit.
 	var filled: float = fraction * float(speed_segments)
 
 	for i in speed_segments:
@@ -348,15 +264,13 @@ func _draw_speed_bar() -> void:
 		var from: Vector2 = _on_ring(centre, radius, squash, a0)
 		var to: Vector2 = _on_ring(centre, radius, squash, a1)
 
-		# The unlit track is always drawn, so the gauge shows its full range
-		# rather than appearing to shrink as the ship slows.
+		# The unlit track is always drawn, so the gauge shows its full range.
 		draw_line(from, to, Color(rim_colour, 0.22), speed_bar_thickness)
 
 		var lit: float = clampf(filled - float(i), 0.0, 1.0)
 		if lit <= 0.0:
 			continue
-		# Top fifth warns: at full speed a capital ship is committed, and
-		# turning it takes a while.
+		# Top fifth warns.
 		var colour: Color = ship_colour if t0 < 0.8 else Color(1.0, 0.72, 0.3)
 		draw_line(from, from.lerp(to, lit), colour, speed_bar_thickness)
 
@@ -367,8 +281,7 @@ func _draw_speed_bar() -> void:
 
 ## A point on the tilted ring at [param angle], measured clockwise from up.
 ##
-## Shared by the gauge and its reading so the two cannot drift apart, which is
-## how the reading ended up beside the wrong end of the bar once already.
+## Shared by the gauge and its reading so the two cannot drift apart.
 func _on_ring(
 	centre: Vector2, radius: float, squash: float, angle: float
 ) -> Vector2:
@@ -376,20 +289,13 @@ func _on_ring(
 
 
 ## The numeric speed, placed at the gauge's FULL end.
-##
-## At the top of the bar, where the fill is heading. A reading at the zero end
-## sits where the needle starts rather than where it is going, and it hung
-## below the panel; at the top it reads as the label for the gauge it belongs
-## to. The heading arc is now short enough and far enough out that the two do
-## not meet.
 func _draw_speed_reading(speed: float, at: Vector2) -> void:
 	var label: String = "%d m/s" % roundi(speed * metres_per_unit)
 	var width: float = _font.get_string_size(
 		label, HORIZONTAL_ALIGNMENT_LEFT, -1, 9
 	).x
-	# Clamped to the panel, so a three-digit reading grows leftward into empty
-	# space rather than off the side of the control -- which would not be
-	# clipped, because a Control does not clip its own drawing.
+	# Clamped to the panel: a three-digit reading grows leftward rather than off
+	# the side of the control, which a Control does not clip.
 	var x: float = clampf(at.x - width * 0.5, 2.0, size.x - width - 2.0)
 	draw_string(
 		_font, Vector2(x, at.y - 5.0), label,
@@ -408,8 +314,7 @@ func _draw_disc() -> void:
 			_ellipse(centre, radius * fraction, radius * fraction * squash, true),
 			ring_colour, 1.0
 		)
-	# Cross-hairs on the world axes, so the scope has a frame of reference
-	# even when nothing is near the ship.
+	# Cross-hairs on the world axes.
 	draw_line(
 		centre - Vector2(radius, 0.0), centre + Vector2(radius, 0.0),
 		ring_colour, 1.0
@@ -476,9 +381,7 @@ func _draw_wreck() -> void:
 	draw_polyline(corners, wreck_colour, 1.0)
 
 
-## Both swarms, so the scope answers "where is the enemy" as well as "where
-## are mine". A radar that only showed your own units would be a formation
-## display, not a radar.
+## Both swarms, friendly first.
 func _draw_drones() -> void:
 	_draw_swarm(allegiance, drone_colour)
 	_draw_swarm(1 - allegiance, rival_colour)
@@ -496,9 +399,7 @@ func _draw_swarm(side: int, colour: Color) -> void:
 		if drone == null:
 			continue
 		var machine: Node = drone.get_node_or_null("StateMachine")
-		# Only friendly units report their state. Knowing an enemy drone is
-		# fleeing is information the player has no way to see in the world,
-		# and the radar should not know more than the ships do.
+		# Only friendly units report their state.
 		var fleeing: bool = (
 			side == allegiance
 			and machine != null
@@ -511,8 +412,7 @@ func _draw_swarm(side: int, colour: Color) -> void:
 		)
 
 
-## The enemy Matriarch, as a larger blip. It is the thing that ends the match,
-## so it should not look like one more drone.
+## The enemy Matriarch, as a larger blip than a drone.
 func _draw_rival_ship() -> void:
 	for node in get_tree().get_nodes_in_group("commander_" + str(1 - allegiance)):
 		var ship: Node3D = node as Node3D
@@ -524,10 +424,6 @@ func _draw_rival_ship() -> void:
 
 
 ## The player, as a triangle pointing along the ship's heading.
-##
-## A triangle rather than a blip because heading is the one thing the tilted
-## 3D view makes hard to read at a glance, and it is exactly what the player
-## needs when choosing which way to fly.
 func _draw_ship() -> void:
 	if _ship == null:
 		return
@@ -554,15 +450,8 @@ func _draw_ship() -> void:
 ## The camera's heading in degrees, 0 at north (-Z), increasing clockwise
 ## through east (+X).
 ##
-## Measured from where the camera is ACTUALLY looking, not from the rig's yaw
-## property. Those are not the same thing: the camera sits at an offset and
-## aims back at the ship, so its true bearing differs from its yaw by an amount
-## that changes as it turns. Measured against the rig's yaw the arc was out by
-## -155, +49, -160 and +20 degrees at the four cardinal settings -- not a
-## constant offset, so no single correction could have fixed it.
-##
-## Reading the basis instead makes the heading mean what the player sees,
-## which is the only definition the compass can usefully have.
+## Read from the basis, not the rig's yaw: the camera aims back at the ship, so
+## the two differ by an amount that changes as it turns.
 func _camera_heading() -> float:
 	if _camera == null:
 		return 0.0
@@ -581,8 +470,7 @@ func _arc_point(bearing: float, radius_scale: float = 1.0) -> Vector2:
 	if absf(relative) > arc_span_degrees * 0.5:
 		return Vector2.INF
 	# Map the heading offset onto an arc over the top of the disc. -90 degrees
-	# of screen angle is straight up, so the band centres above the disc and
-	# its ends sweep down either side by half the screen span.
+	# of screen angle is straight up, so the band centres above the disc.
 	var t: float = relative / arc_span_degrees
 	var screen_angle: float = -PI * 0.5 + t * deg_to_rad(arc_screen_span_degrees)
 	var radius: float = _disc_radius() * arc_radius_ratio * radius_scale
@@ -598,8 +486,7 @@ func _bearing_to(point: Vector3) -> float:
 		return 0.0
 	var delta: Vector3 = point - _ship.global_position
 	# atan2(x, -z): bearings run clockwise from north, the opposite handedness
-	# to the usual atan2(y, x) convention. Getting this wrong mirrors the arc,
-	# which reads as roughly working until it sends you the wrong way.
+	# to the usual atan2(y, x) convention.
 	return fposmod(rad_to_deg(atan2(delta.x, -delta.z)), 360.0)
 
 
@@ -624,9 +511,7 @@ func _draw_arc() -> void:
 		var width: float = _font.get_string_size(
 			label, HORIZONTAL_ALIGNMENT_LEFT, -1, 8
 		).x
-		# Only slightly beyond the ticks. The arc itself now sits well out from
-		# the disc, so a large further offset would push the labels outside
-		# the control.
+		# Only slightly beyond the ticks, or the labels fall outside the control.
 		var text_at: Vector2 = _arc_point(bearing, 1.12)
 		if text_at != Vector2.INF:
 			draw_string(
@@ -664,31 +549,22 @@ func _draw_arc_pips() -> void:
 		draw_circle(point, 2.0, target[1])
 
 
-## A marker on the disc rim showing which way world north lies.
-##
-## Necessary BECAUSE the disc turns with the camera. A world-aligned scope has
-## north permanently at the top and needs no marker; a camera-relative one is
-## easier to fly by but loses any absolute reference, so the player can no
-## longer say where they are on the map. This is that reference put back --
-## the one fixed thing on a display that otherwise moves with the player.
+## A marker on the disc rim showing which way world north lies. The disc turns
+## with the camera, so this is the display's only fixed world reference.
 ##
 ## North is -Z. This codebase treats +Z as forward, so a contact due north of
 ## the ship sits at negative Z, which maps to the top of an unrotated disc.
 func _draw_north() -> void:
 	var radius: float = _disc_radius()
 	var squash: float = _squash()
-	# Through the POSITION mapping, not the direction one: this marks where a
-	# contact due north would appear, which is a place on the disc rather than
-	# a heading. The two agree here anyway -- north is pure -Z, so the negated
-	# X that separates them has nothing to act on -- but saying which is meant
-	# keeps the marker correct if the mapping ever changes.
+	# Through the POSITION mapping: this marks where a contact due north would
+	# appear, which is a place on the disc rather than a heading.
 	var direction: Vector2 = _position_to_disc(0.0, -1.0)
 	var at: Vector2 = _disc_centre() + Vector2(
 		direction.x * radius, direction.y * radius * squash
 	)
 
-	# A tick pointing outward along the same bearing, so the marker reads as
-	# belonging to the rim rather than floating beside it.
+	# A tick pointing outward along the same bearing.
 	var outward: Vector2 = Vector2(direction.x, direction.y * squash).normalized()
 	draw_line(at - outward * 2.0, at + outward * 4.0, north_colour, 1.0)
 

@@ -1,108 +1,54 @@
-## Steer around whatever the agent is about to fly into.
+## Steer around obstacles using three ray feelers fanned along the direction of
+## travel. The push is lateral, never backwards, and the probe length scales
+## with the agent's speed.
 ##
-## Reynolds' obstacle avoidance by FEELERS: three probes fanned along the
-## direction of travel -- one straight ahead and one to each side -- and a
-## lateral push away from whichever finds something first. Lateral, not
-## backwards: braking stops a unit in front of the thing it was avoiding, where
-## steering takes it past.
+## Reynolds, Steering Behaviors For Autonomous Characters, "obstacle avoidance".
 ##
-## Three feelers rather than one, because a single forward ray is blind to
-## anything it does not point exactly at. A rock the agent is about to clip
-## with its shoulder returns nothing at all, so the agent flies on and hits it.
-## The side feelers are what let it notice an obstacle it is passing rather
-## than only one it is aiming at, and they are what make the avoidance start
-## turning EARLY instead of at the last moment.
-##
-## Adapted from Reynolds, Steering Behaviors For Autonomous Characters, the
-## "obstacle avoidance" section, and sitting in the same WTPRS priority scheme
-## as the rest of this project's behaviours.
-##
-## The probe length scales with SPEED, not with a constant. A unit travelling
-## twice as fast needs to begin turning twice as early, and the same fixed
-## look-ahead that works when crawling is useless at full speed -- which is
-## exactly how the commander ended up pinned against an asteroid: it only
-## noticed the rock at the moment it hit it.
-##
-## Placed high in the child order, just under Flee. Avoiding a rock and fleeing
-## a threat are both survival, and both need their share of the force budget
-## before anything about formation or destination gets a say.
+## Belongs high in the scene-tree child order, just under Flee -- WTPRS spends
+## the force budget in that order.
 class_name ObstacleAvoidanceBehaviour
 extends SteeringBehaviour
 
 ## Physics layers treated as solid. Layer 1 is the world: rocks and the wreck.
 @export_flags_3d_physics var obstacle_mask: int = 1
 
-## Seconds of travel to look ahead.
-##
-## In time rather than distance, so the probe automatically lengthens as the
-## agent speeds up. Roughly the time it takes to notice, turn, and clear.
+## Seconds of travel to look ahead. The probe lengthens with the agent's speed.
 @export var look_ahead_seconds: float = 1.6
 
-## Shortest the probe is ever allowed to be.
-##
-## A stationary agent has no direction of travel and so no probe at all, which
-## would leave a unit that had already stopped against a rock with no force to
-## get it off again.
-##
-## Short, because it only has to cover the slow case. An earlier version set
-## this to 24 -- long enough to see past the belt's largest rocks from a
-## standstill -- which made a drifting unit trail a probe several times its own
-## length. That job now belongs to the contact escape above, which reacts to
-## collisions Godot has already computed rather than trying to predict them
-## from a standstill, so the floor here can be small enough to read as a
-## sensor rather than a searchlight.
+## Shortest the probe is ever allowed to be, for an agent moving too slowly to
+## have a useful direction of travel.
 @export var minimum_look_ahead: float = 9.0
 
-## How hard the sideways push is, relative to the agent's top speed.
-##
-## Low, because it is only the STARTING push -- see [member pressure_gain].
+## Sideways push on first contact, relative to the agent's top speed. Grows
+## from here by [member pressure_gain] for as long as the obstacle persists.
 @export var avoid_strength: float = 0.55
 
 ## Extra push added per second while an obstacle stays in front of the agent.
-##
-## A single fixed strength has to be wrong one way or the other: strong enough
-## to escape a rock it is grinding against will fling it sideways every time it
-## passes one, and gentle enough to pass cleanly will not free it. Building the
-## force while the obstacle PERSISTS separates those cases -- brushing past
-## something costs almost nothing, and only a probe that keeps seeing the same
-## rock escalates, which is exactly the situation that needs escalating.
 @export var pressure_gain: float = 1.4
 
-## Ceiling on the accumulated push, so a cornered agent cannot be flung.
+## Ceiling on the accumulated push.
 @export var pressure_max: float = 2.5
 
-## Seconds of clear space before the accumulated push resets to nothing.
-##
-## Not instant: a feeler sweeping past the edge of a rock flickers between hit
-## and miss, and resetting on the first clear frame would drop the pressure
-## exactly when the agent is still working its way around. Long enough to ride
-## out the flicker, short enough that open space genuinely clears it.
+## Seconds of clear space before the accumulated push resets to nothing. Not
+## instant, so a feeler flickering along a rock's edge does not reset it.
 @export var pressure_reset_seconds: float = 0.7
 
-## Extra clearance demanded beyond the hit point.
-##
-## Aiming exactly at the tangent means clipping the rock, because the agent has
-## width and the probe is a line.
+## Extra clearance demanded beyond the hit point, since the agent has width and
+## the probe is a line.
 @export var clearance: float = 4.0
 
 ## How far the side feelers splay from the centre one, in degrees.
 @export_range(5.0, 80.0) var feeler_angle: float = 30.0
 
 ## How long the side feelers are, relative to the centre one.
-##
-## Shorter: they exist to catch obstacles the agent is about to pass close to,
-## not to look far off to the side for things it will never reach.
 @export_range(0.2, 1.0) var feeler_length_ratio: float = 0.65
 
-## The last probe result, kept only so the gizmo can draw it.
+## The chosen hit, for the gizmo.
 var _hit_point: Vector3 = Vector3.INF
 var _hit_normal: Vector3 = Vector3.ZERO
 
-## Every feeler cast this frame, hit or not, for the gizmo.
-##
-## Each entry is {from, to, hit}. Rebuilt in [method calculate] rather than
-## recast when drawing: the rays are already paid for, and casting a second set
-## for the display would let what is drawn drift from what actually steered.
+## Every feeler cast this frame as {from, to, hit}, for the gizmo. Recorded by
+## [method calculate] so what is drawn is what actually steered.
 var _drawn_feelers: Array = []
 
 ## Colour of a feeler that found nothing.
@@ -113,18 +59,8 @@ var _drawn_feelers: Array = []
 
 func _ready() -> void:
 	super()
-	# Never on the PLAYER's own ship.
-	#
-	# Avoidance is autonomy, and the player is not autonomous -- a hull that
-	# steers itself away from rocks is one that argues with the stick. Flying
-	# into an asteroid should be the player's mistake to make and their
-	# correction to perform; the rival gets it precisely because nobody is
-	# holding its stick.
-	#
-	# Drones keep it whichever side they belong to, so the test is for a Ship
-	# on allegiance 0 rather than for allegiance alone. Both hives instance the
-	# same scene, which is why this has to be decided here rather than by
-	# leaving the node out.
+	# Off on the player's own ship, on for every other agent. Both hives share
+	# one scene, so this cannot be decided by leaving the node out.
 	var ship: Ship = agent as Ship
 	if ship != null and ship.allegiance == 0:
 		enabled = false
@@ -143,19 +79,7 @@ func calculate() -> Vector3:
 	if agent == null:
 		return Vector3.ZERO
 
-	# Already touching something: push off it, before any probing.
-	#
-	# The feelers answer "what am I about to hit", which is the wrong question
-	# for an agent that has already hit it. A unit pressed against a rock has
-	# almost no velocity, so its heading is unreliable and its feelers can miss
-	# entirely along the surface -- and meanwhile ArriveBarnacle is producing
-	# well over a thousand units of force against a budget of forty, so it
-	# saturates WTPRS and holds the unit against the rock indefinitely. That is
-	# the stuck case: not a failure to see the obstacle, but a failure to stop
-	# pushing into one already found.
-	#
-	# Godot's own collision normals are the reliable signal here, and they are
-	# free -- move_and_slide has already computed them this frame.
+	# Already in contact: push off directly, before probing for what is ahead.
 	var contact: Vector3 = _contact_escape()
 	if contact != Vector3.ZERO:
 		return contact
@@ -188,10 +112,8 @@ func calculate() -> Vector3:
 	var normal: Vector3 = Vector3.ZERO
 	var point: Vector3 = Vector3.ZERO
 
-	# Recorded for the gizmo, whether or not anything is found. Drawing only the
-	# feelers that HIT shows nothing most of the time, which makes the
-	# behaviour look inert when it is working perfectly well -- the useful
-	# thing to see is the probe sweeping ahead and lengthening with speed.
+	# Recorded whether or not anything is found, so the gizmo can draw clear
+	# feelers as well as blocked ones.
 	_drawn_feelers.clear()
 
 	for feeler in feelers:

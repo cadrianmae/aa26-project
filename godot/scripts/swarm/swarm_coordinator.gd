@@ -1,20 +1,11 @@
 ## Turns player input into swarm orders.
 ##
-## The player's second verb. Flying the Matriarch is direct control; this is
-## indirect -- the player states an intent and fifty autonomous units interpret
-## it. Keeping the two apart matters: [PlayerSteeringBehaviour] moves one ship
-## and knows nothing about the swarm, this issues orders and moves nothing.
-##
-## Deliberately thin. It reads keys, works out a rally point, and calls
-## [method Swarm.order]. It does not know what any intent means -- that is
-## [SwarmIntentState]'s job, per unit. A coordinator that decided behaviour
-## would be a central controller, and the swarm would stop being autonomous.
+## Issues orders only; [SwarmIntentState] decides what an intent means, per
+## unit.
 class_name SwarmCoordinator
 extends Node
 
-## The swarm being commanded. Found by group on ready when left unset, because
-## the Godot editor has pruned exported NodePaths from this project's scenes
-## before.
+## The swarm being commanded. Found by group on ready when left unset.
 @export var swarm: Swarm
 
 ## Which side this coordinator commands.
@@ -30,9 +21,7 @@ var ship: Node3D
 ## The marker showing the current rally point.
 var marker: RallyMarker
 
-## Maps each input action to the intent it issues. Data rather than a match
-## statement, so a new order is one line here and one state, with no branching
-## to extend.
+## Maps each input action to the intent it issues.
 const INTENT_ACTIONS: Dictionary = {
 	"order_hold": Swarm.Intent.HOLD,
 	"order_rally": Swarm.Intent.RALLY,
@@ -47,12 +36,8 @@ func _ready() -> void:
 
 ## Find the swarm and marker, if they exist yet.
 ##
-## Resolved on demand rather than in _ready(). Godot readies siblings in scene
-## order, and this node lives under CommanderShip, which sits ABOVE PlayerSwarm
-## and RallyMarker in main.tscn -- so at _ready() time neither has joined its
-## group and both lookups come back empty. Resolving here instead means the
-## references are found the first time the player actually issues an order, by
-## which point the whole tree is up, and reordering the scene cannot break it.
+## Resolved on demand: at _ready() time the swarm and marker have not joined
+## their groups yet.
 func _resolve_targets() -> void:
 	if swarm == null:
 		var found: Array = get_tree().get_nodes_in_group("swarm_" + str(allegiance))
@@ -63,12 +48,6 @@ func _resolve_targets() -> void:
 
 
 ## Keep the standing harvest order pointed at whatever the player has locked.
-##
-## The order key sets harvest_target once, at the moment it is pressed. But a
-## player who is already harvesting and then locks a different rock expects the
-## swarm to switch -- without re-issuing the order, which from their side they
-## have no reason to think is necessary. The lock IS the instruction, so it has
-## to keep applying rather than only being read on a key press.
 func _process(_delta: float) -> void:
 	_resolve_targets()
 	if swarm == null or swarm.intent != Swarm.Intent.HARVEST:
@@ -97,15 +76,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 ## Which Barnacle a HARVEST order designates.
 ##
-## An explicit target lock wins over everything. If the player has selected a
-## Barnacle with T or Tab, that is unambiguously the one they mean, and an
-## order that quietly picked a different rock because the cursor had drifted
-## would make the lock look broken.
-##
-## Otherwise the one nearest where the player is pointing: aiming is already
-## how the player indicates a place in the world, so the order needs no extra
-## control -- point and press 4. Falling back to the nearest Barnacle to the
-## ship keeps it usable on a gamepad, where there is no cursor to read.
+## Explicit lock first, then nearest to the aim point, then nearest to the
+## ship.
 func designated_barnacle() -> Barnacle:
 	var locked: Barnacle = targeted_barnacle()
 	if locked != null:
@@ -121,10 +93,6 @@ func designated_barnacle() -> Barnacle:
 
 
 ## The Barnacle the player currently has targeted, or null.
-##
-## Resolved through the ship rather than held as a reference, for the reason
-## the rest of this class resolves lazily: Targeting lives on the commander
-## and may not exist yet when this node is ready.
 func targeted_barnacle() -> Barnacle:
 	if ship == null:
 		return null
@@ -142,9 +110,7 @@ func targeted_barnacle() -> Barnacle:
 
 ## Where a RALLY order should send the swarm.
 ##
-## The mouse aim point when the player has one, since aiming is already how
-## they point at the world. Falling back to a spot ahead of the ship keeps the
-## order usable on a gamepad, where there is no cursor to read.
+## The mouse aim point, or a spot ahead of the ship when there is none.
 func rally_point() -> Vector3:
 	var steering: Node = ship.get_node_or_null("PlayerSteering") if ship else null
 	if steering != null and steering.has_method("aim_point"):

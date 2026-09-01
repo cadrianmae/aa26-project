@@ -1,8 +1,7 @@
 ## The always-on tier: swarm intent, and the reflex that overrides it.
 ##
-## Runs after the current state every frame. Duggan's FireAtTargetGlobalState
-## is the same shape -- a concern that applies in every state, kept in one
-## place rather than copied into all of them.
+## Runs after the current state every frame. Same shape as Duggan's
+## FireAtTargetGlobalState.
 ##
 ## Putting the flee check here is what makes FLEE a genuine reflex: it is
 ## reachable from every state without any state knowing about it.
@@ -19,16 +18,10 @@ extends State
 @export var detonate_state_name: String = "Detonate"
 
 ## Health fraction below which a unit will consider detonating.
-##
-## A unit this hurt is unlikely to survive the fight it is in, so the question
-## stops being "how do I get out" and becomes "what can I take with me".
 @export_range(0.0, 1.0) var detonate_health_fraction: float = 0.3
 
-## How close an enemy must be for detonation to be worth it.
-##
-## Deliberately short. A dying unit that charges across the map to detonate
-## reads as scripted; one that blows up on the thing already killing it reads
-## as a decision. It also has to be reachable before the unit dies on the way.
+## How close an enemy must be for detonation to be worth it. It has to be
+## reachable before the unit dies on the way.
 @export var detonate_radius: float = 20.0
 
 ## Starting health, captured on first think so "nearly dead" is a proportion
@@ -37,9 +30,7 @@ var _full_health: float = 0.0
 
 ## Which state each swarm intent asks a unit to enter.
 ##
-## A lookup rather than a match statement, so adding an order is one entry
-## here and one state node -- no branching to extend. Keys are
-## [enum Swarm.Intent] values; values are state node names.
+## Keys are [enum Swarm.Intent] values; values are state node names.
 const INTENT_STATES: Dictionary = {
 	Swarm.Intent.HOLD: "Follow",
 	Swarm.Intent.RALLY: "Rally",
@@ -50,23 +41,10 @@ const INTENT_STATES: Dictionary = {
 
 ## Which states each intent will LEAVE ALONE.
 ##
-## The table above says where an order sends a unit. This one says where an
-## order is willing to let a unit stay, and the two are not the same thing:
-##
-##   - HARVEST names a CYCLE. A drone alternates Harvest and Deposit, and
-##     without this the router would drag it out of Deposit on the next frame
-##     and it would never reach the hatchery.
-##   - Every intent tolerates Launch, a TRANSIENT. A drone the factory just
-##     built needs a moment to clear the hatchery whatever the swarm was ordered
-##     to do.
-##   - ENGAGE and PATROL tolerate Detonate, a unit-level DECISION. A drone
-##     spends itself on its own judgement; no order commands it, and no order
-##     should cancel it either.
-##
-## So the rule is: re-assert the order only when the unit is doing something
-## the order does not cover. That keeps the every-frame self-healing -- a unit
-## returning from Flee still gets pulled back to its standing order -- without
-## the router overriding states that are part of carrying that order out.
+##   - HARVEST names a CYCLE: a drone alternates Harvest and Deposit.
+##   - Every intent tolerates Launch, a TRANSIENT.
+##   - ENGAGE and PATROL tolerate Detonate, a unit-level DECISION no order
+##     commands or cancels.
 const INTENT_PERMITS: Dictionary = {
 	Swarm.Intent.HOLD: ["Follow", "Launch"],
 	Swarm.Intent.RALLY: ["Rally", "Launch"],
@@ -89,12 +67,7 @@ func _think() -> void:
 	):
 		return
 
-	# Checked BEFORE the flee reflex, and that ordering is the whole design.
-	# Fleeing is what a unit does when it can still be saved; a unit this hurt
-	# with an enemy already on top of it cannot be, and running only means
-	# dying a few seconds later having achieved nothing. Detonation is not an
-	# order -- the swarm cannot be told to spend itself -- so it belongs here,
-	# in the tier a unit reasons about ITSELF in.
+	# Before the flee reflex: a unit this hurt cannot be saved by running.
 	if _should_detonate():
 		machine.change_state_named(detonate_state_name)
 		return
@@ -113,21 +86,13 @@ func _think() -> void:
 	var intent: int = unit.swarm.intent
 
 	# Leave the unit alone if what it is already doing carries out the order.
-	# Without this the router re-asserts the order every frame and overrides
-	# Deposit, Launch and Detonate -- states that ARE the order being carried
-	# out, not a departure from it.
 	var permitted: Array = INTENT_PERMITS.get(intent, [])
 	if machine.current_state != null and permitted.has(str(machine.current_state.name)):
 		return
 
 	# A HARVEST order with nothing left to harvest becomes a follow order.
-	#
-	# Decided HERE rather than by permitting Follow under HARVEST. Permitting
-	# it stopped the per-frame thrash between Harvest and Follow, but it also
-	# meant the router would leave a drone in Follow forever -- so one that
-	# briefly failed to find a rock never went back to work. Asking the world
-	# whether any rock exists answers the question once, for the whole swarm,
-	# and a drone returns to harvesting the moment one is available again.
+	# Decided here rather than by permitting Follow under HARVEST, so a drone
+	# returns to harvesting the moment a rock is available again.
 	if intent == Swarm.Intent.HARVEST:
 		if Barnacle.nearest_to(get_tree(), unit.global_position) == null:
 			var idle: State = machine.state_named(stripped_belt_state_name)
@@ -143,14 +108,11 @@ func _think() -> void:
 
 	machine.change_state(next_state)
 
-	return
-
 
 ## Whether this unit should spend itself now.
 ##
 ## Two conditions, both required: nearly dead, and an enemy close enough to be
-## worth the trade. Either alone is wrong -- a healthy unit beside an enemy
-## should fight it, and a dying unit alone should run.
+## worth the trade.
 func _should_detonate() -> bool:
 	if unit == null or _full_health <= 0.0:
 		return false

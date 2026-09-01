@@ -4,11 +4,6 @@
 ## attractive. Swapping profiles swaps the AI: an aggressive commander and a
 ## turtling one differ only in these tables, with no code path between them.
 ##
-## This is what makes the system worth its extra lines over an if-else ladder.
-## A ladder encodes priority in the ORDER of its branches, so changing the
-## AI's character means restructuring it. A utility profile encodes priority
-## in WEIGHTS, so a different opponent is a different table.
-##
 ## Reference: Mark, D., Infinite Axis Utility System. See ATTRIBUTIONS.md.
 class_name UtilityProfile
 extends RefCounted
@@ -21,19 +16,13 @@ var considerations: Dictionary = {}
 
 ## Extra score given to whatever the commander is already doing.
 ##
-## Momentum, and it is the reason a utility system does not need a hysteresis
-## hack. Two intents scoring 0.51 and 0.49 would otherwise swap every time the
-## inputs wobbled, and the swarm would spend its life changing its mind. A
-## small bonus means a challenger has to be meaningfully better, not
-## marginally better, to take over.
+## Hysteresis: a challenger must be meaningfully better, not marginally.
 var momentum: float = 0.12
 
 
 ## Build one, as a static factory rather than a parameterised _init.
 ##
-## Same reason as [method Consideration.make]: GDScript cannot resolve another
-## class's custom constructor from a static function, so CommanderProfiles
-## calling UtilityProfile.new("name") fails to parse.
+## Same GDScript limitation as [method Consideration.make].
 static func named(name: String) -> UtilityProfile:
 	var made: UtilityProfile = UtilityProfile.new()
 	made.profile_name = name
@@ -42,15 +31,8 @@ static func named(name: String) -> UtilityProfile:
 
 ## Score one intent: the product of its considerations.
 ##
-## A product, not an average. Any consideration scoring zero vetoes the whole
-## action, which is how "there is no enemy" rules out attacking without a
-## special case anywhere.
-##
-## Compensated for the number of considerations. Multiplying values under 1.0
-## drives a score down the more considerations it has, so an action with four
-## would always lose to one with two however well it scored. The exponent
-## corrects for that -- Mark's fix, and without it a profile silently punishes
-## its own detail.
+## Compensated for consideration count (Mark's fix): multiplying sub-1.0
+## values otherwise penalises an action for having more considerations.
 func score(intent: int, inputs: Dictionary) -> float:
 	if not considerations.has(intent):
 		return 0.0
@@ -82,14 +64,8 @@ func best_intent(
 
 	for intent in considerations:
 		var value: float = score(intent, inputs)
-		# Momentum only on an option that is still viable. Adding it
-		# unconditionally floored the CURRENT intent at `momentum` rather than
-		# at zero, so a vetoed intent could never be abandoned while it was the
-		# one being held: the commander went on ordering HARVEST at a stripped
-		# belt because 0.12 beat every honest alternative.
-		#
-		# That defeats the whole reason considerations are multiplied. A veto
-		# has to survive every later adjustment, or it is not a veto.
+		# Momentum only on a still-viable option: adding it unconditionally would
+		# floor a vetoed current intent at momentum and it could never be dropped.
 		if intent == current and value > 0.0:
 			value += momentum
 		if value > best_score:
@@ -100,9 +76,6 @@ func best_intent(
 
 
 ## Every intent's score, for debugging and for the write-up.
-##
-## A utility system's decisions are opaque from outside -- it picks a winner
-## and says nothing about why. This is how a demo shows the reasoning.
 func explain(inputs: Dictionary, current: int) -> Dictionary:
 	var scores: Dictionary = {}
 	for intent in considerations:

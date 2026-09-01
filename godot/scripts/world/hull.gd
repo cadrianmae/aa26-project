@@ -1,19 +1,4 @@
 ## A ship or asteroid hull, drawn either flat-shaded solid or as wireframe.
-##
-## [constant RenderStyle.SOLID] builds a non-indexed [constant
-## Mesh.PRIMITIVE_TRIANGLES] mesh from a hand-authored vertex and face list,
-## in the style of Frontier: Elite II (1993). Each triangle gets its own copy
-## of its vertices rather than sharing them through an index array, which is
-## what lets the fragment shader derive a genuine per-face normal and keep
-## the facets hard-edged instead of smoothed.
-##
-## [constant RenderStyle.WIREFRAME] keeps the original Elite (1984) look: an
-## [constant Mesh.PRIMITIVE_LINES] mesh built from the same vertex list plus
-## a separate edge list. Line primitives are used rather than a barycentric
-## wireframe shader because Godot's primitive and CSG meshes carry no
-## barycentric attribute, so a derivative-based shader would require custom
-## unindexed meshes regardless. Drawing the edges directly is simpler and
-## stays crisp at any zoom.
 class_name Hull
 extends MeshInstance3D
 
@@ -42,26 +27,18 @@ enum RenderStyle {
 ## Which visual style to build the mesh in.
 @export var render_style: RenderStyle = RenderStyle.SOLID
 
-## Hull colour. Player cyan, enemy amber, asteroids a dull green.
+## Hull colour, used when [member use_faction_colour] is false.
 @export var hull_colour: Color = Color(0.2, 0.9, 1.0)
 
 ## Take the colour from the owning agent's allegiance instead.
 ##
-## The player and the rival fly the SAME scenes -- one commander_ship.tscn, one
-## drone.tscn, instanced twice -- so a colour set in the scene file would paint
-## both sides identically. Deriving it from allegiance is what lets one scene
-## serve both hives, which is also the reason the fiction works: they are the
-## same species.
-##
-## Anything with no allegiance in its ancestry keeps its own colour, so
-## Barnacles and asteroids are unaffected without needing to opt out.
+## Anything with no allegiance in its ancestry keeps its own colour.
 @export var use_faction_colour: bool = true
 
-## Caustic green: the player's hive.
+## The player hive's hull colour.
 @export var player_colour: Color = Color(0.435, 0.812, 0.353)
 
-## Amber gold: the rival hive. Both are Thargoid, so the palette stays inside
-## the same biotech range and splits by hue rather than by unrelated colours.
+## The rival hive's hull colour.
 @export var rival_colour: Color = Color(0.851, 0.643, 0.255)
 
 ## Uniform scale applied to the authored vertex list.
@@ -82,10 +59,7 @@ func _ready() -> void:
 
 ## Colour this hull by the allegiance of whatever owns it.
 ##
-## Walks UP the tree rather than reading the immediate parent: a Hull can sit
-## directly on a Drone, or under a Projectile, or a level deeper inside an
-## imported model. Anything with no allegiance anywhere above it -- a Barnacle,
-## an asteroid -- keeps the colour it was given.
+## Walks up the tree: a Hull may sit several levels under the agent.
 func _apply_faction_colour() -> void:
 	var node: Node = get_parent()
 	while node != null:
@@ -108,8 +82,7 @@ func _build_solid_mesh() -> ArrayMesh:
 	var colours := PackedColorArray()
 	for i in faces.size():
 		points.append(vertices[faces[i]] * hull_scale)
-		# Integer division: the three vertices of one triangle share a face
-		# index, so they share a shade and the facet stays flat.
+		# Integer division: the three vertices of a triangle share a face index.
 		var shade: float = _facet_shade(i / 3)
 		colours.append(Color(
 			hull_colour.r * shade,
@@ -190,29 +163,11 @@ func _vertices_for(shape: HullShape) -> PackedVector3Array:
 				Vector3(0.0, 0.0, -1.4),     # 4 tail
 			])
 		HullShape.MATRIARCH:
-			# Octagonal head-on, like an Interceptor: the octagon lives in the
-			# XY plane and the hull runs along Z through it. Three stations
-			# down the length --
-			#
-			#   1. a small octagonal nose face at the front (the flat),
-			#   2. the full-width octagon behind it (the widest ring),
-			#   3. a single point at the tail (the sharp back).
-			#
-			# The angled front faces are the band between stations 1 and 2:
-			# eight facets sweeping back and outward from the small nose to
-			# the wide ring, which is what "angled and pushed back" means
-			# geometrically.
-			#
-			# Both octagons use corners at 22.5 + 45k degrees, which puts the
-			# FACETS on the cardinals -- flat top, flat bottom, flat sides --
-			# rather than a corner pointing straight up. The flats catch the
-			# light as broad panels, which is the Frontier look; corner-up
-			# would read as a spinning top.
-			#
-			# The nose centre sits slightly proud of its ring so the cap is a
-			# shallow eight-sided pyramid rather than one flat disc. A flat
-			# disc would shade as a single colour and kill the faceting on
-			# the part of the hull the player looks at most.
+			# Three stations along Z: a small nose ring at the front, the
+			# full-width ring behind it, and a single tail point. Both octagons
+			# use corners at 22.5 + 45k degrees, so the facets sit on the
+			# cardinals. The nose centre is slightly proud of its ring, making
+			# the cap a shallow pyramid.
 			return PackedVector3Array([
 				Vector3(0.0, 0.0, 1.85),      # 0 nose centre, slightly proud
 				# 1..8 nose ring, radius 0.5 at z = 1.7.
@@ -265,12 +220,9 @@ func _vertices_for(shape: HullShape) -> PackedVector3Array:
 func _faces_for(shape: HullShape) -> PackedInt32Array:
 	match shape:
 		HullShape.DART:
-			# Nose(0), port wingtip(1), starboard wingtip(2), fin(3), tail(4).
-			# 0, 1, 4, 2 are coplanar (y = 0) and form a convex kite: that
-			# plane is the flat underside, split into two base triangles.
-			# The fin (3) sits above it and is the apex of a four-sided
-			# pyramid roofing the same kite. 2 base + 4 roof = 6 triangles,
-			# closing the hull with no gaps.
+			# Nose(0), port(1), starboard(2), fin(3), tail(4). 0,1,4,2 are
+			# coplanar (y = 0): the flat underside. The fin roofs the same
+			# kite. 6 triangles.
 			return PackedInt32Array([
 				# Underside (flat base, y = 0).
 				0, 1, 4,
@@ -282,10 +234,7 @@ func _faces_for(shape: HullShape) -> PackedInt32Array:
 				2, 0, 3,
 			])
 		HullShape.MATRIARCH:
-			# Three closures, one per section of the hull: a fan over the
-			# nose, a band of quads between the two octagons, and a cone from
-			# the wide ring down to the tail point. 8 + 16 + 8 = 32
-			# triangles, closing the hull with no gaps.
+			# 8 nose-cap + 16 band + 8 rear-cone = 32 triangles.
 			return PackedInt32Array([
 				# Nose cap: fan from the proud centre(0) round the nose ring.
 				0, 1, 2,

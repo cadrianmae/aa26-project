@@ -1,19 +1,6 @@
 ## An engine exhaust: a ribbon trail and a glow at the nozzle.
 ##
-## Placed as a child of a Ship or Drone at the point the exhaust leaves the
-## hull. Four on the Matriarch, one on each drone. It reads the agent it is
-## attached to and does nothing else -- so a hull gets thrusters by having
-## Thruster nodes, and neither Ship nor Drone knows this class exists.
-##
-## Colour matches the weapons on purpose. Everything this species emits comes
-## out the same hot orange-red, so a trail and a bolt read as the same
-## technology rather than as two unrelated effects that happen to share a
-## screen.
-##
-## The trail is in WORLD space, not local. A local-space trail is dragged along
-## behind the ship and looks painted on; a world-space one is left BEHIND, so
-## it hangs in the belt and marks where the ship has been. That difference is
-## most of what makes exhaust read as thrust rather than as decoration.
+## Placed as a child of a Ship or Drone at the point exhaust leaves the hull.
 class_name Thruster
 extends Node3D
 
@@ -23,7 +10,7 @@ extends Node3D
 ## Colour the ribbon fades to along its length, as the exhaust cools.
 @export var ember_colour: Color = Color(0.65, 0.12, 0.03)
 
-## How many past positions the ribbon spans. Longer reads as faster.
+## How many past positions the ribbon spans.
 @export var trail_points: int = 18
 
 ## Half-width of the ribbon at the nozzle, tapering to nothing at the tail.
@@ -36,13 +23,9 @@ extends Node3D
 @export var glow_range: float = 6.0
 
 ## Least throttle at which the thruster shows anything at all.
-##
-## An engine at rest should be dark. Without a floor the trail never fully
-## stops, and a parked ship sits there quietly smoking.
 @export_range(0.0, 0.5) var idle_cutoff: float = 0.04
 
-## How quickly the flame follows the throttle. Fast, but not instant: a step
-## change reads as a light switch rather than as an engine responding.
+## How quickly the flame follows the throttle.
 @export var response_speed: float = 8.0
 
 var _agent: Node3D
@@ -59,9 +42,7 @@ func _ready() -> void:
 
 ## Walk up for whatever has a velocity, so this works on either hull type.
 ##
-## Resolved by looking for the PROPERTY rather than the class, because Ship and
-## Drone share no base type -- one is the player's hull and one is a swarm
-## unit, and neither derives from the other.
+## Matched by property, not class: Ship and Drone share no base type.
 func _find_agent() -> Node3D:
 	var node: Node = get_parent()
 	while node != null:
@@ -82,9 +63,6 @@ func _process(delta: float) -> void:
 
 	var lit: bool = _level > idle_cutoff
 	if _trail != null:
-		# Fed the nozzle's CURRENT world position every frame. When the engine
-		# is not lit the ribbon is still advanced, but with nothing added, so
-		# the existing tail runs itself out instead of freezing in place.
 		_trail.advance(global_position, lit)
 		_trail.width = trail_width * maxf(_level, 0.25)
 	if _glow != null:
@@ -100,8 +78,7 @@ func _build_trail() -> void:
 	_trail.width = trail_width
 	_trail.head_colour = flame_colour
 	_trail.tail_colour = Color(ember_colour.r, ember_colour.g, ember_colour.b, 0.0)
-	# A child, but the ribbon sets top_level itself, so it holds world
-	# positions and is not dragged along by the nozzle it hangs from.
+	# A child, but the ribbon sets top_level itself, so it holds world positions.
 	add_child(_trail)
 
 

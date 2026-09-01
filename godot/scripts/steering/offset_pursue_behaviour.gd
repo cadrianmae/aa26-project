@@ -1,16 +1,16 @@
 ## Hold a fixed slot in the leader's local frame, leading the leader's motion.
 ##
-## This is what makes a swarm read as a formation rather than a crowd. The slot
-## is not authored: [method _capture_offset] measures where the unit was placed
-## relative to the leader and keeps that as its station for the run.
+## The slot is not authored: [method _capture_offset] measures where the unit
+## was placed relative to the leader and keeps that as its station for the run.
 ##
 ## Adapted from Duggan, miniature-rotary-phone/behaviors/offset_pursue.gd.
-## Two departures: the slowing distance is exported rather than hardcoded at
-## 30, and the offset is flattened onto the XZ plane for this 2.5D game.
 class_name OffsetPursueBehaviour
 extends SteeringBehaviour
 
 ## The agent to fly formation on.
+##
+## Optional editor override. Left unset, resolved on ready from the
+## "commander_<allegiance>" group, which survives scene re-saves and spawning.
 @export var leader: CharacterBody3D
 
 ## Distance at which the unit brakes into its slot rather than overshooting.
@@ -25,14 +25,6 @@ var projected: Vector3 = Vector3.ZERO
 
 func _ready() -> void:
 	super()
-	# [member leader] is an optional editor override, kept so the Inspector
-	# still works and the wiring is visible while debugging. It cannot be
-	# relied on: overrides patched into an instanced sub-scene are keyed on
-	# child index and get silently pruned when the scene is re-saved in the
-	# editor, and a unit spawned at run time by a factory has no scene-authored
-	# reference at all. So when it is unset, resolve it from the per-faction
-	# "commander_<allegiance>" group that [Ship] joins on ready -- this works
-	# identically whether the unit came from the scene file or was spawned.
 	if leader == null:
 		var unit: Drone = agent as Drone
 		if unit != null:
@@ -40,9 +32,9 @@ func _ready() -> void:
 				"commander_" + str(unit.allegiance)
 			)
 	# Deferred because the leader's global transform may not be settled during
-	# _ready(). Duggan uses call_deferred here for the same reason. Resolving
-	# leader above, before this call is queued, ensures _capture_offset() sees
-	# the resolved leader rather than running before it exists.
+	# _ready(). Resolving leader above, before this call is queued, ensures
+	# _capture_offset() sees the resolved leader rather than running before it
+	# exists.
 	call_deferred("_capture_offset")
 
 
@@ -71,8 +63,6 @@ func calculate() -> Vector3:
 	var lead_time: float = dist / agent.max_speed
 	projected = world_target + leader.velocity * lead_time
 	projected.y = agent.global_position.y
-	# Same derived radius as ArriveBehaviour: a formation slot chased at twice
-	# the speed needs four times the room to settle into.
 	return arrive_towards(projected, maxf(slowing_radius, braking_distance()))
 
 

@@ -1,9 +1,4 @@
 ## Something units flee from.
-##
-## Exists so the FLEE reflex is testable and demonstrable before combat is
-## built. Phase 4's enemy fire and enemy units join the same "threat" group and
-## the reflex works unchanged -- the units never learn what a threat actually
-## is, which is what keeps the behaviour general.
 class_name Threat
 extends Node3D
 
@@ -25,8 +20,6 @@ func _process(_delta: float) -> void:
 
 
 ## The nearest threat to [param point], or null when none is in range.
-##
-## Static so callers do not need a reference to any particular threat.
 static func nearest_to(tree: SceneTree, point: Vector3) -> Threat:
 	var best: Threat = null
 	var best_distance: float = INF

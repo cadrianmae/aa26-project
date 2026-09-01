@@ -5,14 +5,6 @@
 ## on the left, whatever is targeted -- and when nothing is targeted, it draws
 ## nothing at all rather than an empty frame, so the HUD is quiet until there
 ## is something to say.
-##
-## Elite Dangerous puts these either side of the scanner for a reason worth
-## copying: own status and target status are the two things read constantly
-## during a fight, and flanking the scanner keeps all three inside one glance.
-##
-## Everything is drawn rather than textured. At 640x360 a texture would either
-## be too small to read or too large to sit beside the radar, and a handful of
-## polygons scales with the panel.
 class_name StatusPanel
 extends Control
 
@@ -34,8 +26,7 @@ enum Mode { OWN_SHIP, TARGET }
 ## High, because the integrity arc wraps BELOW the ring and needs the room.
 @export_range(0.0, 1.0) var ring_centre_ratio: float = 0.42
 
-## The ring is squashed to match the radar's tilt, so the three elements read
-## as one instrument rather than a flat badge beside a tilted disc.
+## Viewing angle, in degrees from overhead. Matches [member Radar.tilt_degrees].
 @export_range(0.0, 80.0) var tilt_degrees: float = 45.0
 
 ## How far out the integrity arc sits, as a multiple of the ring radius.
@@ -71,8 +62,7 @@ func _process(_delta: float) -> void:
 
 
 ## Resolved on first draw, never in _ready(). Godot readies siblings in scene
-## order, so this Control can be ready before the ship it reports on. The
-## project has been bitten by that four times now.
+## order, so this Control can be ready before the ship it reports on.
 func _resolve() -> void:
 	# A destroyed commander is freed, and a freed node is not null.
 	if _ship != null and not is_instance_valid(_ship):
@@ -116,8 +106,6 @@ func _draw_panel(
 	var squash: float = cos(deg_to_rad(tilt_degrees))
 
 	_draw_ellipse(centre, radius, squash, ring_colour, 1.0)
-	# A second, tighter ring. Elite's schematic sits inside a pair of them, and
-	# the doubling is what stops a lone ellipse reading as a bubble.
 	_draw_ellipse(centre, radius * 0.82, squash, ring_colour, 1.0)
 
 	# A swarm is a scatter, not a silhouette -- drawn instead of the polygon.
@@ -148,9 +136,8 @@ func _draw_panel(
 
 ## The integrity arc, wrapped under the ring.
 ##
-## Drawn as two arcs over the same span -- the whole span faintly, then the
-## filled portion over it -- so the bar reads as a gauge with a known maximum
-## rather than a line that happens to be some length.
+## Drawn as two arcs over the same span: the whole span faintly, then the
+## filled portion over it.
 func _draw_integrity(
 	centre: Vector2, radius: float, squash: float, fraction: float
 ) -> void:
@@ -194,8 +181,7 @@ func _draw_ellipse(
 
 ## Hull integrity as 0..1.
 ##
-## Measured against the health the ship started with, captured on first draw,
-## because Ship carries no maximum of its own.
+## Measured against the health the ship started with, captured on first draw.
 var _full_health: float = 0.0
 
 
@@ -226,8 +212,7 @@ func _target_colour() -> Color:
 
 ## The Matriarch silhouette, in units of the ring radius.
 ##
-## The hull seen from above: flat angled bow, swept flanks, a sharp tail. The
-## same shape the model reads as, at eight points instead of eighty.
+## The hull seen from above: flat angled bow, swept flanks, a sharp tail.
 func _ship_points() -> PackedVector2Array:
 	return PackedVector2Array([
 		Vector2(0.0, -0.62),
@@ -243,9 +228,8 @@ func _ship_points() -> PackedVector2Array:
 
 ## What to draw inside the target ring, by kind.
 ##
-## A swarm has no single silhouette, so it is drawn as the cluster it is: the
-## schematic is honest about the fact that the thing being targeted is a
-## centre of mass rather than an object.
+## A swarm has no single silhouette, so it returns an empty array and is drawn
+## as a cluster instead.
 func _target_points() -> PackedVector2Array:
 	match _targeting.kind:
 		Targeting.Kind.SHIP:
@@ -259,8 +243,7 @@ func _target_points() -> PackedVector2Array:
 	return PackedVector2Array()
 
 
-## Swarm targets get drawn separately, as a scatter of drones rather than a
-## polygon, so the panel shows a flock and not a blob.
+## Swarm targets are drawn as a scatter of drones rather than a polygon.
 func _draw_swarm_cluster(centre: Vector2, radius: float) -> void:
 	var seeds: Array = [
 		Vector2(0.0, 0.0), Vector2(0.34, -0.18), Vector2(-0.30, -0.10),

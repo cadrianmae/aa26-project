@@ -3,28 +3,13 @@
 ##
 ## Adapted from Duggan, miniature-rotary-phone/behaviors/cohesion.gd:14-24.
 ##
-## Cohesion is the cleanest example of a behaviour composed out of seek: the
-## whole force is "average the neighbours' positions, then seek that point".
-##
-## The trailing normalisation matters. Cohesion contributes a UNIT-LENGTH
-## direction only, discarding magnitude, so distance sets direction and nothing
-## else; relative strength is left entirely to weight in the WTPRS sum.
-## Separation deliberately keeps its magnitude, cohesion deliberately discards
-## it. That asymmetry is what stops the flock collapsing in on itself.
+## Returns a unit-length direction; magnitude is discarded, so [member weight]
+## alone sets strength.
 class_name CohesionBehaviour
 extends SteeringBehaviour
 
 ## How loose the swarm gets when its commander is nearly dead, as a fraction
 ## of full cohesion.
-##
-## Taken from how Thargon swarms behave in Elite Dangerous: as the Interceptor
-## controlling them loses hearts, its swarm visibly moves with LESS cohesion.
-## The swarm's tightness reports the mothership's health, so a player reads
-## how a fight is going by looking at the enemy's drones rather than at a bar.
-##
-## Emergent rather than scripted: nothing tells the drones to spread out. One
-## weight falls, the separation force that was always there stops being
-## balanced, and the formation opens up on its own.
 @export_range(0.0, 1.0) var wounded_cohesion: float = 0.2
 
 ## The commander this unit's cohesion depends on. Resolved on first use, never
@@ -80,9 +65,6 @@ func calculate() -> Vector3:
 	centre_of_mass /= float(valid)
 	var force: Vector3 = seek_towards(centre_of_mass).normalized()
 	force.y = 0.0
-	# Scaled here rather than by writing to `weight`, so the Inspector value
-	# keeps meaning "how cohesive is this swarm at full health" instead of
-	# being silently overwritten every frame.
 	return force * cohesion_scale()
 
 

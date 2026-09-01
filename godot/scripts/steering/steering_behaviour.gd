@@ -2,14 +2,12 @@
 ##
 ## A behaviour is a [Node] child of the agent it steers. The agent collects its
 ## behaviours at run time and never names a concrete one, so adding a behaviour
-## is a new file plus a node in the scene -- the Open/Closed principle made
-## concrete.
+## is a new file plus a node in the scene.
 ##
 ## Adapted from Duggan, miniature-rotary-phone/behaviors/steering_behavior.gd.
 ## Two deliberate departures from that original:
 ##   1. [method calculate] is declared here and returns [constant Vector3.ZERO],
-##      rather than being discovered by duck typing. A typo in a subclass then
-##      fails loudly instead of silently never being collected.
+##      rather than being discovered by duck typing.
 ##   2. [member agent] is typed [CharacterBody3D] rather than the agent class,
 ##      because two scripts whose [code]class_name[/code]s reference each other
 ##      are a cyclic dependency that GDScript rejects at parse time.
@@ -59,32 +57,17 @@ func on_draw_gizmos() -> void:
 
 
 ## Steer flat out towards [param destination]: Reynolds seek.
-##
-## Shared helper rather than a behaviour of its own, because cohesion, path
-## following and pursuit are all "seek, at a point I worked out first".
 func seek_towards(destination: Vector3) -> Vector3:
 	var to_target: Vector3 = destination - agent.global_position
 	var desired: Vector3 = to_target.normalized() * agent.max_speed
 	return desired - agent.velocity
 
 
-## Steer towards [param destination], braking inside [param slowing_radius].
-##
-## The [code]dist < 2.0[/code] dead zone is a numerical-stability guard: the
-## line below it divides by [code]dist[/code], which blows up at the target and
-## makes the agent jitter or emit NaN. It also gives a clean stop condition.
-## Adapted from Duggan, behaviors/boid.gd:106-116.
 ## The distance this agent needs in order to stop from full speed.
 ##
 ## Braking distance from the constant-acceleration result, v^2 / 2a, where the
 ## agent's acceleration is its force ceiling over its mass. Both terms come
-## from the agent itself, so the radius tracks whatever the agent is tuned to
-## -- doubling a unit's speed quadruples the room it needs, and nothing has to
-## be re-tuned by hand.
-##
-## Quadratically, not linearly: a unit going twice as fast carries four times
-## the kinetic energy and needs four times the distance to shed it. A radius
-## that scaled linearly would still overshoot, just less obviously.
+## from the agent itself, so the radius tracks whatever the agent is tuned to.
 ##
 ## [param scale] is per-behaviour taste -- below 1 brakes late and arrives
 ## hard, above 1 drifts in gently.
@@ -100,6 +83,12 @@ func braking_distance(scale: float = 1.0) -> float:
 	return (speed * speed) / (2.0 * acceleration) * scale
 
 
+## Steer towards [param destination], braking inside [param slowing_radius].
+##
+## The [code]dist < 2.0[/code] dead zone is a numerical-stability guard: the
+## line below it divides by [code]dist[/code], which blows up at the target and
+## makes the agent jitter or emit NaN. It also gives a clean stop condition.
+## Adapted from Duggan, behaviors/boid.gd:106-116.
 func arrive_towards(destination: Vector3, slowing_radius: float) -> Vector3:
 	var to_target: Vector3 = destination - agent.global_position
 	var dist: float = to_target.length()

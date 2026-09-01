@@ -1,20 +1,8 @@
 ## Scatters asteroids across the belt.
-##
-## Placed in code rather than by hand in the scene, for three reasons. Hand-
-## placing forty rocks is forty transforms to maintain. A seeded scatter gives
-## a different belt by changing one number, so the map can be re-rolled until
-## one looks right. And Phase 3's Barnacles attach to asteroids, so whatever
-## places the rocks has to be able to answer where they are -- which a pile of
-## scene nodes cannot do without a search.
-##
-## The scatter is SEEDED, not random: the same seed always produces the same
-## belt. A map that reshuffled every run would make a bug indistinguishable
-## from an unlucky layout, and would make the demo video unrepeatable.
 class_name AsteroidField
 extends Node3D
 
-## The exported asteroid variants. Four different rocks is enough that no two
-## neighbours are obviously the same at a glance, without modelling forty.
+## The asteroid scenes to choose between.
 @export var variants: Array[PackedScene] = []
 
 ## How many asteroids to place.
@@ -23,26 +11,20 @@ extends Node3D
 ## Radius of the belt, in world units.
 @export var field_radius: float = 900.0
 
-## Nothing is placed within this distance of the origin, keeping the wreck at
-## the centre clear rather than growing rocks through its hull.
+## Nothing is placed within this distance of the origin, in world units.
 @export var keep_out_radius: float = 320.0
 
-## Vertical spread. Small, because the game is played on the XZ plane and a
-## rock far above or below it is a rock the player never interacts with -- but
-## not zero, or the belt reads as a flat sheet.
+## Half-extent of the vertical scatter, in world units.
 @export var vertical_spread: float = 18.0
 
-## Smallest and largest asteroid, as a multiplier on the modelled size. The
-## models are about 2.3 units across, so at 1 unit to 4 metres these are
-## roughly 30 to 180 metres.
+## Smallest and largest asteroid, as a multiplier on the modelled size.
 @export var min_scale: float = 3.5
 @export var max_scale: float = 20.0
 
 ## Change this to re-roll the entire belt.
 @export var seed_value: int = 20260830
 
-## Neutral grey-brown: asteroids belong to no hatchery, and the palette keeps them
-## outside the green/gold faction range so they can never be misread as units.
+## Colour multiplied into every placed rock.
 @export var tint: Color = Color(0.42, 0.39, 0.34)
 
 @export_group("Barnacles")
@@ -50,26 +32,19 @@ extends Node3D
 ## The Barnacle to grow on chosen asteroids. Left unset, the belt is inert.
 @export var barnacle_scene: PackedScene
 
-## How many asteroids carry a Barnacle. Well under the rock count, so finding
-## one is a reason to range across the belt rather than something the swarm
-## trips over.
+## How many asteroids carry a Barnacle.
 @export var barnacle_count: int = 9
 
-## How far past its rock's collider a Barnacle is placed.
-##
-## Enough that the Barnacle is clear of the rock and a drone can settle against
-## it, without it floating so far off that it stops reading as growing there.
+## How far past its rock's collider a Barnacle is placed, in world units.
 @export var barnacle_surface_margin: float = 3.0
 
-## Alloys in each Barnacle. The hatchery's drone_cost is 25, so one full Barnacle
-## is worth roughly five drones.
+## Alloys placed in each Barnacle.
 @export var barnacle_reserve: float = 120.0
 
-## Every asteroid placed, in placement order. Phase 3's Barnacles read this to
-## decide which rocks they grow on.
+## Every asteroid placed, in placement order.
 var asteroids: Array[Node3D] = []
 
-## Every Barnacle grown, so the map can be inspected without a group search.
+## Every Barnacle grown.
 var barnacles: Array[Node3D] = []
 
 
@@ -92,9 +67,6 @@ func _scatter() -> void:
 			continue
 
 		rock.position = _scatter_position(rng)
-		# A random orientation on all three axes, because a rock has no
-		# correct way up and identical orientations would betray the four
-		# repeated meshes immediately.
 		rock.rotation = Vector3(
 			rng.randf_range(0.0, TAU),
 			rng.randf_range(0.0, TAU),
@@ -109,15 +81,6 @@ func _scatter() -> void:
 
 
 ## Grow Barnacles on a spread of the placed asteroids.
-##
-## Attached to rocks rather than scattered independently, because the fiction
-## says so -- Thargoid Barnacles grow on asteroids -- and because it gives the
-## belt a purpose: a rock is now either worth visiting or it is cover.
-##
-## The chosen rocks are spread evenly through the placement order rather than
-## picked at random. Random choice clusters: with nine picks from forty, two
-## adjacent rocks carrying Barnacles while a whole arc of the belt has none is
-## a common outcome, and it makes half the map pointless.
 func _grow_barnacles() -> void:
 	if barnacle_scene == null or asteroids.is_empty():
 		return
@@ -132,36 +95,18 @@ func _grow_barnacles() -> void:
 		var barnacle: Node3D = barnacle_scene.instantiate() as Node3D
 		if barnacle == null:
 			continue
-		# A child of the rock, so it inherits the rock's position but NOT its
-		# scale -- a Barnacle on a 20x asteroid would otherwise be twenty
-		# times the size of one on a small rock, and its harvest radius with
-		# it.
+		# top_level so the Barnacle does not inherit the rock's scale.
 		barnacle.top_level = true
 		if "reserve" in barnacle:
 			barnacle.reserve = barnacle_reserve
 
-		# add_child BEFORE positioning. global_position is meaningless on a
-		# node outside the tree -- it returns an identity transform and logs
-		# "Condition !is_inside_tree() is true", so the barnacle would land at
-		# the origin instead of on its rock.
+		# add_child BEFORE positioning: global_position is meaningless on a node
+		# outside the tree and would leave the Barnacle at the origin.
 		rock.add_child(barnacle)
-		# On the ROCK'S SURFACE, on the movement plane -- not at its centre.
-		#
-		# Two constraints, and the centre satisfied neither. The game is played
-		# on a plane and steering forces have their Y zeroed, so a Barnacle at
-		# its rock's true height is one the swarm could never climb to. And a
-		# rock scales up to 20x a 1.05 collider, so a Barnacle at the centre of
-		# any but the smallest sits INSIDE solid geometry: drones would fly at
-		# it, hit the collider, and slide around the outside forever, never
-		# reaching a harvest radius buried in rock.
-		#
-		# Pushed out past the collider so the Barnacle and its whole harvest
-		# radius sit in open space. The sphere is centred at the rock's real
-		# height, so its cross-section at y = 0 is narrower than its full
-		# radius -- clearing the full radius therefore always clears the plane.
+		# Placed at y = 0 and outside the rock's collider: steering forces have
+		# their Y zeroed, and a Barnacle inside solid geometry is unreachable.
 		var rock_radius: float = 1.05 * rock.scale.x
-		# Golden angle, so successive Barnacles face different directions
-		# rather than all budding off the same side of the belt.
+		# Golden angle, so successive Barnacles face different directions.
 		var facing: float = float(i) * 2.39996
 		var outward := Vector3(cos(facing), 0.0, sin(facing))
 		barnacle.global_position = Vector3(
@@ -172,14 +117,7 @@ func _grow_barnacles() -> void:
 
 ## Give a placed rock a solid body, so ships and drones cannot fly through it.
 ##
-## A sphere rather than the mesh's true shape. A trimesh collider for forty
-## 80-triangle rocks is a lot of broad-phase work for a game already running
-## a spatial hash and steering for fifty agents every frame, and at 640x360 a
-## drone brushing past a lump is not distinguishable from a drone brushing
-## past a sphere the same size.
-##
-## Layer 1 is the world layer, which is the only layer drones and ships mask
-## against -- so rocks stop them while drones still pass through each other.
+## Layer 1 is the world layer, the only layer drones and ships mask against.
 func _add_collision(rock: Node3D) -> void:
 	var body: StaticBody3D = StaticBody3D.new()
 	body.name = "Body"
@@ -188,7 +126,7 @@ func _add_collision(rock: Node3D) -> void:
 
 	var shape: CollisionShape3D = CollisionShape3D.new()
 	var sphere: SphereShape3D = SphereShape3D.new()
-	# The model is roughly 1.15 units in radius before the instance is scaled;
+	# The model is roughly 1.05 units in radius before the instance is scaled;
 	# the shape is a child so it inherits that scale.
 	sphere.radius = 1.05
 	shape.shape = sphere
@@ -199,10 +137,7 @@ func _add_collision(rock: Node3D) -> void:
 
 ## A position in the belt annulus: inside the field, outside the keep-out.
 ##
-## Sampled on sqrt of the radius rather than linearly. Uniform sampling of the
-## radius clusters points toward the centre, because a ring at radius r has
-## circumference proportional to r -- so the outer belt would look sparse and
-## the inner belt crowded.
+## Sampled on sqrt of the radius so points spread evenly by area.
 func _scatter_position(rng: RandomNumberGenerator) -> Vector3:
 	var angle: float = rng.randf_range(0.0, TAU)
 	var t: float = rng.randf()

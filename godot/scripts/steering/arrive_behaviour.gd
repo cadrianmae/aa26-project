@@ -8,16 +8,11 @@ extends SteeringBehaviour
 @export var target: Node3D
 
 ## Distance at which the unit begins to brake, when [member auto_slowing] is
-## off. Duggan's default is 20 against a max speed of 10.
+## off.
 @export var slowing_radius: float = 20.0
 
 ## Derive the slowing radius from the agent's speed instead of the fixed value
 ## above.
-##
-## On by default. A fixed radius is only correct at the speed it was tuned at:
-## when this project doubled every speed, every hand-set radius became too
-## small at once and units sailed past what they were arriving at. Deriving it
-## means the tuning survives any change to how fast things move.
 @export var auto_slowing: bool = true
 
 ## Multiplies the derived radius. Below 1 brakes late and arrives hard; above
@@ -35,9 +30,7 @@ func calculate() -> Vector3:
 
 ## The radius actually used this frame.
 ##
-## Floored at the authored [member slowing_radius] so a deliberately tight
-## approach -- a drone settling onto a Barnacle's surface -- is never widened
-## by the derived value, only ever tightened.
+## Never smaller than the authored [member slowing_radius].
 func effective_radius() -> float:
 	if not auto_slowing:
 		return slowing_radius

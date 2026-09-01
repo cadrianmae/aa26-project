@@ -2,18 +2,7 @@
 ##
 ## Adapted from Duggan, miniature-rotary-phone/behaviors/alignment.gd:13-21.
 ##
-## This averages neighbours' HEADINGS (basis.z), not their velocities, which
-## has two consequences worth knowing. It is speed-independent: a fast and a
-## slow neighbour pointing the same way contribute identically. And it is only
-## correct because +Z is forward in this codebase; averaging basis.z under
-## Godot's default -Z-forward would align the flock backwards.
-##
-## DEFECT 3 in Duggan's alignment.gd:17-20 -- his `force` is a member written
-## only inside the `neighbors.size() > 0` guard, so a unit that loses all its
-## neighbours keeps applying its LAST alignment force indefinitely. A lone unit
-## latches on a stale heading forever. Fixed here by returning Vector3.ZERO
-## when there are no neighbours, so the behaviour contributes nothing rather
-## than something stale.
+## Averages basis.z: +Z is forward in this codebase, not Godot's default -Z.
 class_name AlignmentBehaviour
 extends SteeringBehaviour
 
@@ -37,8 +26,6 @@ func calculate() -> Vector3:
 			desired += other.global_transform.basis.z
 			valid += 1
 
-	# The correction to DEFECT 3: no neighbours means no force, not the
-	# previous frame's force.
 	if valid == 0:
 		return Vector3.ZERO
 

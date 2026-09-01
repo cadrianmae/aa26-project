@@ -1,20 +1,7 @@
 ## The one place the star and the gas giant are defined.
 ##
-## Three things need to agree about where the sun is, and they are all
-## configured differently: the sky shader draws it, a DirectionalLight3D casts
-## from it, and every hull shader shades against it. Left to themselves they
-## drift -- the sun ends up visibly in one corner of the sky while the ships
-## are lit from the other, which reads as broken without being obviously
-## wrong.
-##
-## So this node owns the direction and the colour, and writes them to all
-## three. Move the sun here and everything follows.
-##
-## The hull shaders are reached through GLOBAL shader uniforms rather than by
-## setting materials. Hull materials are built in code in three separate
-## places, so there is no single material to write to, and walking the tree to
-## find them all would silently miss any created later -- a drone spawned by
-## the factory, for instance.
+## Owns the sun direction and colour and writes them to the sky shader, the
+## DirectionalLight3D, and the hull shaders' GLOBAL uniforms.
 class_name StarSystem
 extends Node3D
 
@@ -27,9 +14,7 @@ extends Node3D
 		sun_direction = value
 		_push()
 
-## The star's colour. Cool white: a strongly tinted star would push the
-## player's caustic green toward the rival's amber gold, and telling the two
-## hives apart at six pixels is already the hardest thing the palette does.
+## The star's colour.
 @export var sun_colour: Color = Color(1.0, 0.957, 0.91):
 	set(value):
 		sun_colour = value
@@ -43,9 +28,7 @@ extends Node3D
 
 @export_group("Fill")
 
-## What a surface facing away from the star still receives: bounce off the tan
-## gas giant. Without it, unlit faces render pure black and hulls lose their
-## silhouette against space entirely.
+## What a surface facing away from the star still receives.
 @export var fill_colour: Color = Color(0.16, 0.14, 0.11):
 	set(value):
 		fill_colour = value
@@ -53,15 +36,13 @@ extends Node3D
 
 @export_group("Planet")
 
-## Direction to the gas giant. Deliberately away from the sun, so the planet
-## shows a crescent rather than a fully lit disc -- a full disc has no
-## terminator, and the terminator is what makes it read as a sphere.
+## Direction to the gas giant.
 @export var planet_direction: Vector3 = Vector3(-0.75, 0.12, -0.65):
 	set(value):
 		planet_direction = value
 		_push()
 
-## Tan, as a gas giant should be.
+## The gas giant's colour.
 @export var planet_colour: Color = Color(0.72, 0.60, 0.42):
 	set(value):
 		planet_colour = value

@@ -1,25 +1,11 @@
 ## Real world-space motion dust: GPUParticles3D the camera genuinely flies
 ## through.
 ##
-## Screen-locked shader dust (the previous approach, removed from
-## starfield.gdshader) could only elongate fixed on-screen dashes; it never
-## had a world position for the camera to pass, so it could never produce
-## genuine fly-by motion. This script instead builds a real GPUParticles3D
-## system with [member GPUParticles3D.local_coords] = false, which is the
-## crucial setting: with world coordinates, spawned particles stay put in the
-## world once emitted, and only the emitter itself (this node, recentred on
-## the camera every frame) chases the camera around. The camera then
-## genuinely flies past particles it spawned moments ago, which gives real
-## parallax and fly-by motion for free -- no per-particle scripting needed.
+## local_coords = false is load-bearing: particles stay in world space and only
+## the emitter chases the camera.
 ##
-## Streak length comes from a small custom shader on the particle quad's
-## material (res://shaders/dust_particle.gdshader) rather than Godot's
-## built-in particle trails: the engine tracker has open bugs where trails
-## anchor to the scene root instead of following local_coords = false
-## particles, and where particles vanish outright when the draw mesh is
-## swapped to a trail mesh. Instead this script recomputes a camera-velocity
-## uniform every frame and the shader stretches each quad along it -- see
-## _follow_camera below.
+## Streak length comes from res://shaders/dust_particle.gdshader, not Godot
+## particle trails.
 class_name DustField
 extends Node3D
 
@@ -28,37 +14,27 @@ extends Node3D
 @export var camera: Camera3D
 
 ## Half-extents of the box particles spawn within, in world units, recentred
-## on the camera every frame. Large enough that dust is already present
-## ahead of travel rather than only appearing as the camera arrives there.
+## on the camera every frame.
 @export var emission_extents: Vector3 = Vector3(30.0, 16.0, 30.0)
 
-## Particles alive at once. Kept low, and the particles themselves kept small
-## (see _PARTICLE_SIZE) -- this is a strategy game where the cyan wireframe
-## ships and gizmo arrows must stay clearly readable, so the dust is meant as
-## a subtle motion cue, not a spectacle.
+## Particles alive at once.
 @export var particle_amount: int = 140
 
 ## Seconds a particle lives before respawning elsewhere in the box.
 @export var particle_lifetime: float = 3.0
 
-## Camera speed, in world units/second, below which nothing emits at all --
-## this is what makes emission "fall to nothing when the camera is still"
-## rather than just fading arbitrarily close to zero.
+## Camera speed, in world units/second, below which nothing emits.
 @export var emission_speed_floor: float = 0.5
 
 ## Camera speed at which emission ratio and streak length both reach their
-## maximum. Chosen against the ship's own scale (max_speed is ~18 units/s,
-## see ship.gd) so full-speed flight reads as a clearly moving field rather
-## than sitting at a fraction of the effect.
+## maximum.
 @export var speed_saturation: float = 20.0
 
 ## Maximum streak stretch, as a multiple of the particle quad's own
-## half-size. Exposed so the owner can tune how pronounced the streaking
-## reads without touching the shader.
+## half-size.
 @export var max_stretch: float = 6.0
 
-## Base (unstretched) size of each dust particle quad, in world units. Small
-## deliberately -- see particle_amount's comment.
+## Base (unstretched) size of each dust particle quad, in world units.
 const _PARTICLE_SIZE: float = 0.12
 
 var _particles: GPUParticles3D
@@ -95,10 +71,8 @@ func _ready() -> void:
 	_material.shader = load("res://shaders/dust_particle.gdshader")
 	quad.material = _material
 
-	# local_coords = false means particles are simulated in world space, so
-	# the culling AABB (in the node's local space) needs enough margin beyond
-	# the emission box for particles that have drifted or are about to spawn
-	# at its far edge, or they get culled as the camera nears the box edge.
+	# Particles are simulated in world space, so the culling AABB (in local
+	# space) needs margin beyond the emission box or particles get culled.
 	var aabb_margin: Vector3 = emission_extents * 0.5
 	_particles.visibility_aabb = AABB(
 		-emission_extents - aabb_margin, (emission_extents + aabb_margin) * 2.0
@@ -114,10 +88,9 @@ func _process(delta: float) -> void:
 
 
 ## Recentres the emitter box on the camera and updates emission and streak
-## uniforms from the camera's frame-to-frame velocity. FollowCamera lerps
-## toward its target and has no velocity member of its own, so velocity is
-## computed here by differencing the camera's world position between frames,
-## guarding the first frame and any zero-delta frame.
+## uniforms from the camera's frame-to-frame velocity.
+##
+## FollowCamera has no velocity member, so velocity is differenced here.
 func _follow_camera(delta: float) -> void:
 	if camera == null:
 		return
@@ -139,11 +112,8 @@ func _follow_camera(delta: float) -> void:
 
 	if _material == null:
 		return
-	# Project world-space velocity into the camera's own local right/up axes
-	# so the streak's on-screen direction always matches how the view
-	# actually moves, regardless of which way the camera faces.
-	# basis.transposed() is the inverse of an orthonormal basis, so this
-	# recovers local components from the world-space vector.
+	# Project world-space velocity into the camera's local right/up axes.
+	# basis.transposed() is the inverse of an orthonormal basis.
 	var local_velocity: Vector3 = camera.global_transform.basis.transposed() * camera_velocity
 	var velocity_screen: Vector2 = Vector2(local_velocity.x, local_velocity.y)
 	var direction_screen: Vector2 = Vector2.ZERO
@@ -151,7 +121,5 @@ func _follow_camera(delta: float) -> void:
 		direction_screen = velocity_screen.normalized()
 	_material.set_shader_parameter("stretch_direction", direction_screen)
 	_material.set_shader_parameter("stretch_amount", speed_fraction * max_stretch)
-	# Distance-fade uniforms (dust_particle.gdshader) need the camera's world
-	# position every frame to fade particles near the emission box's edge and
-	# right at the lens; see the shader's own comments for why.
+	# The shader fades particles by distance from the camera.
 	_material.set_shader_parameter("camera_position", camera.global_position)

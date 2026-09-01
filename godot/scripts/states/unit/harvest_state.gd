@@ -1,11 +1,5 @@
 ## Work a Barnacle for Meta-Alloys until the drone is full.
 ##
-## The outward half of the economy, and the state where the swarm's autonomy
-## shows most plainly: the player orders HARVEST once, and fifty drones
-## independently choose Barnacles, fill up, carry home, and come back out.
-## Nothing coordinates them -- they each just answer "what is nearest that
-## still has alloys in it".
-##
 ## The pairing with [DepositState] is the whole loop. This one fills the
 ## payload and hands over when full; that one empties it and sends the drone
 ## back here.
@@ -22,27 +16,10 @@ extends State
 @export var idle_state_name: String = "Follow"
 
 ## Meta-Alloys drawn per second while in range.
-##
-## Slow enough to WATCH. At 8/s a 10-capacity drone filled in 1.25 seconds,
-## which read as arriving and instantly leaving -- the mining was over before
-## the eye registered it had started. At 2.5/s a load takes four seconds, so
-## a drone visibly sits against the rock and works.
-##
-## The cost is throughput, and it is paid deliberately: a Barnacle holding 120
-## is twelve loads either way, but those twelve now take 48 seconds of
-## drone-time rather than 15, so a swarm has a real reason to spread across
-## several rocks instead of queueing at one.
 @export var harvest_rate: float = 2.5
 
-## How far out a waiting drone orbits while the Barnacle is busy.
-##
-## Outside the harvest radius on purpose: a queue that waits INSIDE the
-## working range looks like several drones harvesting at once, which is
-## exactly the impression the one-at-a-time rule exists to avoid.
-##
-## Roughly twice the harvest radius. Close enough that the queue reads as
-## attending THIS rock rather than milling about near it, far enough that the
-## working drone is visibly the only one on the surface.
+## How far out a waiting drone orbits while the Barnacle is busy. Roughly twice
+## the harvest radius, so the queue sits outside the working range.
 @export var queue_radius: float = 13.0
 
 ## How fast the waiting ring turns, in radians per second.
@@ -50,18 +27,14 @@ extends State
 
 ## How far off the Barnacle's centre the working drone sits.
 ##
-## Roughly the Barnacle's own radius. Steering at the centre parks the drone
-## INSIDE the rock, which looks like a clipping bug rather than like mining;
-## steering at the near surface puts it against the face it is working.
+## Roughly the Barnacle's own radius.
 @export var surface_offset: float = 3.5
 
-## Behaviours this state runs. The flocking pair stays on so drones working
-## the same rock spread around it instead of stacking on one point.
+## Behaviours this state runs.
 const ACTIVE_BEHAVIOURS: Array = ["Avoid", "ArriveBarnacle", "Separation", "Alignment"]
 
 ## The Barnacle being worked. Chosen on entry and held, so a drone commits to
-## one rock rather than re-deciding every frame and oscillating between two
-## equidistant ones.
+## one rock rather than re-deciding every frame.
 var barnacle: Barnacle
 
 ## The point this drone steers at: the Barnacle itself when it holds the
@@ -76,8 +49,7 @@ var _queue_phase: float = 0.0
 func _enter() -> void:
 	barnacle = _designated()
 	_ensure_target_point()
-	# Derived from the instance id, like the patrol phase: any stable per-unit
-	# number works, and a shared counter would collide after respawns.
+	# Derived from the instance id: a stable per-unit number.
 	_queue_phase = float(unit.get_instance_id() % 360) * TAU / 360.0
 	_point_arrive_at_barnacle()
 	use_only(ACTIVE_BEHAVIOURS)
@@ -96,9 +68,9 @@ func _exit() -> void:
 
 ## Create the node the ArriveBehaviour steers at.
 ##
-## A node rather than a coordinate because ArriveBehaviour targets a Node3D --
-## the same reason the rally marker and the patrol point are nodes. top_level
-## so it holds a world position instead of being dragged along by the drone.
+## A node rather than a coordinate because ArriveBehaviour targets a Node3D.
+## top_level so it holds a world position instead of being dragged along by the
+## drone.
 func _ensure_target_point() -> void:
 	if _target_point != null:
 		return
@@ -110,8 +82,7 @@ func _ensure_target_point() -> void:
 
 ## Aim the unit's ArriveBehaviour at [member barnacle].
 ##
-## Called again whenever the target changes, so re-targeting is one call
-## rather than something every caller has to remember to do.
+## Called again whenever the target changes.
 func _point_arrive_at_barnacle() -> void:
 	if unit == null:
 		return
@@ -124,9 +95,9 @@ func _point_arrive_at_barnacle() -> void:
 			% [name, arrive_behaviour_name, unit.name]
 		)
 		return
-	# Always the moving point, never the Barnacle itself: the point sits ON
-	# the Barnacle while this drone holds the claim and out on the waiting
-	# ring while it does not, so one target covers both cases.
+	# Always the moving point, never the Barnacle itself: the point sits ON the
+	# Barnacle while this drone holds the claim and out on the waiting ring
+	# while it does not.
 	arrive.target = _target_point
 
 
@@ -148,23 +119,19 @@ func try_claim() -> bool:
 ## Put the steering target where this drone should be right now.
 ##
 ## On the Barnacle when it holds the claim; out on the waiting ring, at its
-## own phase, when it does not. Called every frame, so a drone slides from
-## the queue onto the rock the moment the one in front leaves.
+## own phase, when it does not. Called every frame.
 func update_target_point(delta: float) -> void:
 	if _target_point == null or barnacle == null:
 		return
 
 	if has_claim():
-		# The near surface, not the centre: whichever side the drone
-		# approached from becomes the face it works, so it settles against the
-		# rock instead of burrowing into it.
+		# The near surface, not the centre: the side the drone approached from
+		# becomes the face it works.
 		var approach: Vector3 = unit.global_position - barnacle.global_position
 		approach.y = 0.0
 		if approach.length_squared() < 0.01:
-			# The drone's own +Z, not Vector3.FORWARD. Godot's constant is -Z,
-			# which is the back of every model in this codebase -- so the
-			# fallback face would have been chosen on the opposite side from
-			# what "forward" means everywhere else here.
+			# The drone's own +Z, not Vector3.FORWARD: Godot's constant is -Z,
+			# which is the back of every model in this codebase.
 			approach = unit.global_basis.z
 		_target_point.global_position = (
 			barnacle.global_position + approach.normalized() * surface_offset
@@ -192,9 +159,7 @@ func retarget() -> bool:
 ## The Barnacle this drone should be working.
 ##
 ## The player's designation when there is one; the nearest with alloys left
-## otherwise. The fallback matters for drones the factory builds mid-order and
-## for a designated rock that runs dry -- the swarm keeps working rather than
-## stopping to wait for a new instruction.
+## otherwise.
 func _designated() -> Barnacle:
 	if unit != null and unit.swarm != null:
 		var chosen: Barnacle = unit.swarm.harvest_target
@@ -202,16 +167,6 @@ func _designated() -> Barnacle:
 			return chosen
 
 	# Nearest to the COMMANDER, not to this drone.
-	#
-	# Nearest-to-self sends a drone to whatever rock happens to be closest to
-	# wherever it drifted, which is regularly one deep in enemy territory --
-	# and once one drone goes, the rest follow it out. Measuring from the
-	# commander keeps the swarm working its own side of the belt, and it is
-	# also the honest reading of the order: the player is asking THE HIVE to
-	# harvest, and the hive is where their ship is.
-	#
-	# It matters more now that the hatchery rides on the ship: a rock far from
-	# the commander is a long round trip and earns almost nothing.
 	var from: Vector3 = unit.global_position
 	var commander: Node3D = get_tree().get_first_node_in_group(
 		"commander_" + str(unit.allegiance)
@@ -252,11 +207,8 @@ func _think() -> void:
 
 	var delta: float = get_process_delta_time()
 
-	# Follow a change of designation mid-job. A drone commits to one rock so it
-	# does not oscillate between two equidistant ones, but an explicit new
-	# order from the player is not oscillation -- it is the player changing
-	# their mind, and the swarm should answer immediately rather than after
-	# every drone happens to fill up.
+	# Follow a change of designation mid-job: an explicit new order is not the
+	# oscillation the commit rule guards against.
 	if unit.swarm != null:
 		var designated: Barnacle = unit.swarm.harvest_target
 		if (

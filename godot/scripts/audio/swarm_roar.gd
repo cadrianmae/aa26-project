@@ -1,22 +1,7 @@
-## The swarm's collective sound: a drill whine.
+## The swarm's collective sound: one player for the whole swarm.
 ##
-## Built from the SAME measured Thargoid resonances as the Matriarch -- see
-## [EngineHum] for the table and how it was measured -- because a Thargon is
-## the same species, grown from the same material. What differs is size. A
-## Thargon is a fraction of a Matriarch, and small resonators ring high, so the
-## whole set is shifted up by [member size_pitch] and the lowest resonances are
-## dropped entirely rather than being reproduced at a scale they would not
-## occur at.
-##
-## The result is a whine rather than a roar, which is what a swarm of small
-## fast drives actually sounds like. The 35 Hz flutter is kept but held
-## shallow: it is what makes the sound read as MANY drives rather than one, but
-## at any depth it chops the tone into a buzz, and a drill does not pulse.
-##
-## ONE player for the whole swarm, not one per drone. Fifty generators would
-## cost more than the steering does, and a swarm is heard as a mass rather than
-## as fifty locatable sources anyway. Count and nearest-drone distance drive
-## the level instead.
+## Uses the same measured partials as [EngineHum], shifted up by
+## [member size_pitch].
 class_name SwarmRoar
 extends AudioStreamPlayer
 
@@ -38,9 +23,6 @@ var partials: Array = []
 @export_group("Texture")
 
 ## How many detuned copies of the whole comb to sum.
-##
-## Three, not five: each copy already carries sixteen partials, and the comb
-## spacing does most of the smearing on its own.
 @export_range(1, 8) var voices: int = 3
 
 ## How far apart the copies are spread, in Hz.
@@ -49,13 +31,9 @@ var partials: Array = []
 @export_group("Flutter")
 
 ## The measured 35.2 Hz amplitude modulation.
-##
-## Kept, but shallow. It is what makes the sound read as MANY small drives
-## rather than one, so removing it entirely loses the swarm -- but at the depth
-## it was measured at, it chops the tone into a buzz, and a drill does not
-## pulse. Shallow enough to roughen, not deep enough to interrupt.
 @export var flutter_hz: float = 35.2
 
+## Depth of the flutter, 0 to 1.
 @export_range(0.0, 1.0) var flutter_depth: float = 0.16
 
 @export_group("Response")
@@ -70,18 +48,12 @@ var partials: Array = []
 @export_range(0.0, 2.0) var pitch_range: float = 0.55
 
 ## Fixed pitch multiplier applied to the whole comb.
-##
-## The Thargoid's resonances are the same whatever is producing them, but a
-## Thargon is a fraction of a Matriarch's size, and small resonators ring high.
-## This is what separates the two sounds: same species, same intervals, shifted
-## up into a whine.
 @export_range(1.0, 4.0) var size_pitch: float = 2.1
 
 ## Output level.
 @export_range(0.0, 1.0) var master: float = 0.18
 
-## How quickly the sound follows the swarm. Slow, so the roar swells as it
-## arrives rather than snapping on.
+## How quickly the sound follows the swarm.
 @export var response_speed: float = 1.6
 
 @export_group("Source")
@@ -95,8 +67,7 @@ var presence: float = 0.0
 ## Smoothed speed of the swarm, driving pitch.
 var effort: float = 0.0
 
-## Sample rate of the rendered loop. Nothing here exceeds 1.1 kHz, so 22 050
-## is far above what the content needs.
+## Sample rate of the rendered loop, in Hz. Content stops below 1.1 kHz.
 @export var loop_rate: int = 22050
 
 var _swarm: Swarm
@@ -105,16 +76,11 @@ var _listener: Node3D
 
 func _ready() -> void:
 	_build_partials()
-	# Rendered once, then looped. See ToneBank for why: synthesising this
-	# live cost 200 000 sin() calls per frame on its own.
 	stream = _render_loop()
 	play()
 
 
 ## The measured peaks, in frequency order.
-##
-## Kept inharmonic on purpose. Rounding these to a harmonic series would fuse
-## them into one note, which is exactly what a swarm must not sound like.
 func _build_partials() -> void:
 	partials = [
 		Partial.at(310.5, -9.1),
@@ -135,10 +101,9 @@ func _build_partials() -> void:
 
 ## Render one second of the swarm into a seamless looping stream.
 ##
-## Unlike the Matriarch's 1.46 Hz swell, both of the swarm's measured
-## modulation rates are fast enough to fit inside a one-second loop, so both
-## are baked in. That matters: 35 Hz could not be run per frame without
-## aliasing badly against the frame rate.
+## The 35.2 Hz flutter is baked into the loop; it is the only modulation
+## applied, and it is too fast to run per frame without aliasing against the
+## frame rate.
 func _render_loop() -> AudioStreamWAV:
 	var mix: PackedFloat32Array = ToneBank.buffer(loop_rate)
 
@@ -157,7 +122,7 @@ func _render_loop() -> AudioStreamWAV:
 	return ToneBank.to_stream(mix, loop_rate)
 
 
-## Per frame this costs two property writes. All the synthesis happened once.
+## Set pitch from the swarm's speed and level from its presence.
 func _process(delta: float) -> void:
 	_track_swarm(delta)
 	pitch_scale = 1.0 + effort * pitch_range
@@ -182,9 +147,6 @@ func _track_swarm(delta: float) -> void:
 		var count: float = clampf(
 			float(_swarm.units.size()) / float(maxi(full_swarm, 1)), 0.0, 1.0
 		)
-		# Nearest drone, not the average: a swarm is loud when ANY of it is
-		# close, and averaging would let a distant majority mute the three
-		# units going past the listener's head.
 		var nearest: float = audible_range
 		var speed_total: float = 0.0
 		var alive: int = 0
@@ -200,8 +162,6 @@ func _track_swarm(delta: float) -> void:
 				)
 
 		var proximity: float = 1.0 - clampf(nearest / audible_range, 0.0, 1.0)
-		# Squared, so the roar rises steeply as the swarm closes rather than
-		# fading in across the whole belt.
 		target_presence = count * proximity * proximity
 		if alive > 0:
 			target_effort = clampf(speed_total / float(alive), 0.0, 1.0)

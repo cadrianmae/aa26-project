@@ -6,20 +6,11 @@
 ## a unit can be told what the swarm wants while its own state still decides
 ## what it actually does.
 ##
-## DEFECT 4 in Duggan's state_machine.gd:14-31 -- his change_state() reparents
-## the new state onto the boid, but _ready() does NOT do the same for
-## initial_state. The first state therefore lives at a different place in the
-## tree from every state after it, so anything resolving relative node paths
-## behaves differently on the first state than on all the others. Fixed here by
-## not reparenting at all: states stay children of the machine for their whole
-## life, which is simpler and uniform.
+## States stay children of the machine for their whole life.
 class_name StateMachine
 extends Node
 
 ## Emitted after a transition, for gizmos and audio to react to.
-##
-## Currently unconsumed -- no listener connects to it yet. A later phase wires
-## audio to this signal; it stays here so that phase has somewhere to connect.
 signal state_changed(from: State, to: State)
 
 ## The state to start in. Must be a child of this machine.
@@ -72,8 +63,7 @@ func _process(_delta: float) -> void:
 	if global != null:
 		global._think()
 
-	# Mirrors Duggan's own FSM readout (state_machine.gd:37) -- this is what
-	# makes the two-tier machine observable during a demo.
+	# Mirrors Duggan's own FSM readout (state_machine.gd:37).
 	if unit != null:
 		DebugDraw2D.set_text("SM: " + unit.name, current_state.name if current_state else "-")
 

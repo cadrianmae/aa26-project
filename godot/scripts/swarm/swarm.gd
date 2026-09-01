@@ -1,27 +1,18 @@
 ## A faction's swarm: the spatial index that answers "who is near this unit".
 ##
 ## Adapted from Duggan, miniature-rotary-phone/behaviors/school.gd:29-58, with
-## two corrections documented at their sites. Unlike his School this does NOT
-## spawn its units: Phase 3's factory owns spawning, and units register
-## themselves on ready. Separating "who creates units" from "who indexes them"
-## is what lets a unit spawned at run time join the flock with no special case.
+## two corrections documented at their sites. Units register themselves on
+## ready; this does not spawn them.
 ##
-## The grid is a uniform spatial hash re-binned every frame. Binning is O(n)
-## with no tree to rebuild, which is the right trade for a few hundred agents
-## that all move every frame. The naive alternative is O(n squared): at 100
-## units that is 9,900 distance checks per frame, at 1,000 it is 999,000.
+## The grid is a uniform spatial hash re-binned every frame.
 class_name Swarm
 extends Node
 
 ## What the swarm has been told to do. One order for the whole swarm, not per
-## unit: the player commands a swarm, and each unit works out for itself what
-## that order means from where it happens to be. That gap between the order and
-## the behaviour is the whole point -- a swarm that obeyed literally would need
-## the player to micromanage fifty units.
+## unit.
 ##
-## The intent does NOT force a state. [SwarmIntentState] reads it and decides,
-## and the flee reflex overrides it entirely: a unit told to HARVEST while a
-## threat is on top of it still runs. Orders lose to survival.
+## Does not force a state: [SwarmIntentState] reads it, and the flee reflex
+## overrides it.
 enum Intent {
 	## Hold formation on the commander. The default.
 	HOLD,
@@ -51,15 +42,6 @@ var intent: Intent = Intent.HOLD
 var rally_point: Vector3 = Vector3.ZERO
 
 ## The Barnacle the player has designated for [constant Intent.HARVEST].
-##
-## The player chooses WHICH rock; the drones still work out everything else --
-## who gets the claim, who queues, when to come home, what to do when it runs
-## dry. That is the division the whole artefact argues for: the commander sets
-## intent, the swarm handles execution.
-##
-## Letting each drone pick its own nearest Barnacle was the earlier behaviour
-## and it read as the swarm ignoring the player: fifty units would scatter to
-## nine different rocks and there was no decision left to make.
 var harvest_target: Barnacle
 
 ## How far a unit can see a neighbour, in world units.
@@ -70,24 +52,16 @@ var harvest_target: Barnacle
 
 ## Width of one hash cell.
 ##
-## DEFECT 1 in Duggan's school.gd:9,14 -- he ships cell_size = 10 against
-## neighbour_distance = 20. The 27-cell scan samples the boid's own cell plus
-## the 26 around it, so the GUARANTEED reach in any direction is only one
-## cell_size (the unit can sit hard against a cell face), up to two at best.
-## With his numbers a genuine neighbour 16 to 20 units away is silently missed.
-## The flock still looks passable because a missed neighbour at the edge of the
-## perception sphere contributes almost nothing under 1/d separation, but it is
-## a correctness bug, not a tuning choice. Fixed by requiring
-## cell_size >= neighbour_distance, enforced in _ready().
+## Must be at least [member neighbour_distance]: the 27-cell scan reaches only
+## one cell in the worst case, so a smaller cell silently misses neighbours.
+## Enforced in _ready(). See docs.
 @export var cell_size: float = 20.0
 
 ## Spread of the hash key space per axis. Large enough that distinct cells
 ## never collide onto one key for any position this game reaches.
 @export var grid_size: int = 10000
 
-## When false, falls back to the naive O(n squared) scan. Kept as a runtime
-## A/B against the partitioned path, which is what the optimisation claim in
-## the write-up rests on.
+## When false, falls back to the naive O(n squared) scan.
 @export var partition: bool = true
 
 @export_group("Debug")
@@ -103,8 +77,6 @@ var _cells: Dictionary = {}
 
 
 func _ready() -> void:
-	# Enforcing the fix rather than trusting the Inspector: a cell smaller than
-	# the perception radius reintroduces DEFECT 1 silently.
 	if cell_size < neighbour_distance:
 		push_warning(
 			"Swarm cell_size (%.1f) is below neighbour_distance (%.1f); "
@@ -114,9 +86,7 @@ func _ready() -> void:
 		)
 		cell_size = neighbour_distance
 
-	# Register this swarm in a group keyed by allegiance. This is how spawned
-	# units locate their swarm when no export reference is set; runtime spawned
-	# units in Phase 3 depend on this.
+	# Group lookup is how spawned units find their swarm.
 	add_to_group("swarm_" + str(allegiance))
 
 
@@ -129,13 +99,8 @@ func register(unit: Drone) -> void:
 
 ## Give the swarm a new standing order.
 ##
-## The only way [member intent] changes. Assigning the field directly would
-## skip the signal, so callers go through here and listeners can trust that
-## every change is announced.
-##
-## Re-issuing the order already in force is a no-op rather than a re-emit: the
-## coordinator fires on a key press, and a held key would otherwise emit sixty
-## times a second.
+## The only way [member intent] changes; assigning it directly skips the
+## signal. Re-issuing the order already in force is a no-op.
 func order(new_intent: Intent, point: Vector3 = Vector3.ZERO) -> void:
 	# The rally point is set before the early-out, so re-issuing RALLY at a new
 	# location moves the swarm rather than being swallowed as a duplicate.
@@ -162,13 +127,11 @@ func _process(_delta: float) -> void:
 
 ## Hash a world position to a single integer cell key.
 ##
-## The key formula x + y*grid_size + z*grid_size*grid_size is a positional
-## encoding, which only works when every digit is non-negative. With negative
-## components, distinct cells ALIAS onto the same key: (x=-1, y=1, z=0) gives
-## -1 + 10000 = 9999, and (x=9999, y=0, z=0) also gives 9999 -- two different
-## cells, one key, so units in one would be treated as neighbours of units in
-## the other. The +10000 shift makes every coordinate non-negative before
-## encoding, which removes the possibility. Duggan, school.gd:29-34.
+## Two separate quantities here both happen to be 10000. The literal 10000.0
+## is a world-space offset in world units, added so every component is
+## non-negative; without it the positional encoding aliases distinct cells onto
+## one key. [member grid_size] is the key stride per axis, in cells. Changing
+## one does not change the other. Duggan, school.gd:29-34.
 func position_to_cell(p: Vector3) -> int:
 	var shifted: Vector3 = p + Vector3(10000.0, 10000.0, 10000.0)
 	var x: int = int(floor(shifted.x / cell_size))
@@ -192,12 +155,8 @@ func _rebuild_cells() -> void:
 ## Return the nearest units to [param unit] on the same side, within
 ## [member neighbour_distance], at most [member max_neighbours] of them.
 ##
-## DEFECT 2 in Duggan's boid.gd:65-66 -- he returns the moment the neighbour
-## count hits the cap, so the units kept are the first ones the cell iteration
-## happened to reach, NOT the nearest. In a dense cluster that is a meaningful
-## bias, and scanning the centre cell first only mitigates it. Fixed here by
-## collecting every candidate inside the radius, sorting by distance, and
-## keeping the closest max_neighbours.
+## Every candidate inside the radius is collected and sorted before truncation,
+## so the units kept are the nearest rather than the first found. See docs.
 func neighbours_of(unit: Drone) -> Array[Drone]:
 	var found: Array[Drone] = []
 	var candidates: Array = _candidates_for(unit)
@@ -212,7 +171,7 @@ func neighbours_of(unit: Drone) -> Array[Drone]:
 		if offset.length_squared() <= radius_squared:
 			found.append(other)
 
-	# Nearest-first, then truncate. This is the correction to DEFECT 2.
+	# Nearest-first, then truncate.
 	var origin: Vector3 = unit.global_position
 	found.sort_custom(
 		func(a: Drone, b: Drone) -> bool:
@@ -229,10 +188,8 @@ func neighbours_of(unit: Drone) -> Array[Drone]:
 ## The units worth distance-testing: the 27 cells around this one when
 ## partitioning, or everything when not.
 ##
-## Offsetting the POSITION by exactly cell_size always shifts the cell index by
-## exactly one, so the 27 keys are distinct and nothing is double-counted.
-## Note 3x3x3 = 27 is the 3D figure; the familiar "own cell plus 8 neighbours"
-## is the 2D form and is wrong here. Duggan, boid.gd:44-49.
+## Offsetting the position by exactly cell_size shifts the cell index by one,
+## so the 27 keys are distinct. Duggan, boid.gd:44-49.
 func _candidates_for(unit: Drone) -> Array:
 	if not partition:
 		return units
