@@ -5,6 +5,10 @@
 class_name Ship
 extends CharacterBody3D
 
+## Group each Ship joins, suffixed with its allegiance. Named for the role, not
+## the class: [method _ready] joins "commander_0" or "commander_1".
+const GROUP_PREFIX: String = "commander_"
+
 ## Emitted when the ship is destroyed. The match ends on this.
 signal destroyed(ship: Ship)
 
@@ -63,7 +67,7 @@ func _ready() -> void:
 	_collect_behaviours()
 	# Group lookup, not a scene NodePath: run-time-spawned units and re-saved
 	# instance overrides both lose scene-authored references.
-	add_to_group("commander_" + str(allegiance))
+	add_to_group(Ship.GROUP_PREFIX + str(allegiance))
 
 
 ## Cache the child behaviours once rather than walking the child list every
@@ -189,7 +193,7 @@ func take_damage(amount: float) -> void:
 ## Leaves the group immediately: everything that hunts a commander resolves
 ## through it, so a wreck must not stay findable during the fade.
 func _die() -> void:
-	remove_from_group("commander_" + str(allegiance))
+	remove_from_group(Ship.GROUP_PREFIX + str(allegiance))
 	set_physics_process(false)
 	velocity = Vector3.ZERO
 
@@ -211,8 +215,3 @@ func _regenerate(delta: float) -> void:
 	if _since_damage < regen_delay or health >= max_health:
 		return
 	health = minf(health + regen_per_second * delta, max_health)
-
-
-## Clamp a thrust into the cone the ship can steer through.
-##
-## Braking is exempt: thrust opposing velocity is not a dodged turn.

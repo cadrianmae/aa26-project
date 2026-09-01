@@ -37,7 +37,7 @@ func _resolve() -> void:
 	if _hatchery == null:
 		_hatchery = Hatchery.for_allegiance(get_tree(), allegiance)
 	if _swarm == null:
-		var found: Array = get_tree().get_nodes_in_group("swarm_" + str(allegiance))
+		var found: Array = get_tree().get_nodes_in_group(Swarm.GROUP_PREFIX + str(allegiance))
 		if not found.is_empty():
 			_swarm = found[0] as Swarm
 

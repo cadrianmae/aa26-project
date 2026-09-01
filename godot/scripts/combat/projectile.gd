@@ -116,7 +116,7 @@ func _first_hit() -> Node3D:
 		if side == allegiance:
 			continue
 
-		for node in get_tree().get_nodes_in_group("swarm_" + str(side)):
+		for node in get_tree().get_nodes_in_group(Swarm.GROUP_PREFIX + str(side)):
 			var swarm: Swarm = node as Swarm
 			if swarm == null:
 				continue
@@ -128,7 +128,7 @@ func _first_hit() -> Node3D:
 					closest_distance = distance
 					closest = drone
 
-		for node in get_tree().get_nodes_in_group("commander_" + str(side)):
+		for node in get_tree().get_nodes_in_group(Ship.GROUP_PREFIX + str(side)):
 			var ship: Node3D = node as Node3D
 			if ship == null:
 				continue

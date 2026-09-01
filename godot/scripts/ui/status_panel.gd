@@ -70,7 +70,7 @@ func _resolve() -> void:
 		_targeting = null
 	if _ship == null:
 		_ship = get_tree().get_first_node_in_group(
-			"commander_" + str(allegiance)
+			Ship.GROUP_PREFIX + str(allegiance)
 		) as Ship
 	if _targeting == null and _ship != null:
 		_targeting = _ship.get_node_or_null("Targeting") as Targeting

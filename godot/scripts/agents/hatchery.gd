@@ -88,7 +88,7 @@ func can_deposit_from(point: Vector3) -> bool:
 func _resolve_swarm() -> void:
 	if _swarm != null:
 		return
-	var found: Array = get_tree().get_nodes_in_group("swarm_" + str(allegiance))
+	var found: Array = get_tree().get_nodes_in_group(Swarm.GROUP_PREFIX + str(allegiance))
 	if not found.is_empty():
 		_swarm = found[0] as Swarm
 

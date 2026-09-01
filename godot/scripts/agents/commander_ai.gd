@@ -120,14 +120,14 @@ func _process(delta: float) -> void:
 
 func _resolve() -> void:
 	if swarm == null:
-		var found: Array = get_tree().get_nodes_in_group("swarm_" + str(allegiance))
+		var found: Array = get_tree().get_nodes_in_group(Swarm.GROUP_PREFIX + str(allegiance))
 		if not found.is_empty():
 			swarm = found[0] as Swarm
 	if hatchery == null:
 		hatchery = Hatchery.for_allegiance(get_tree(), allegiance)
 	if ship == null:
 		ship = get_tree().get_first_node_in_group(
-			"commander_" + str(allegiance)
+			Ship.GROUP_PREFIX + str(allegiance)
 		) as Ship
 	if ship != null and full_health <= 0.0:
 		full_health = ship.health
@@ -164,7 +164,7 @@ func nearest_enemy() -> Node3D:
 	var from: Vector3 = ship.global_position if ship != null else Vector3.ZERO
 	var closest: Node3D = null
 	var closest_distance: float = INF
-	for node in get_tree().get_nodes_in_group("commander_" + str(enemy)):
+	for node in get_tree().get_nodes_in_group(Ship.GROUP_PREFIX + str(enemy)):
 		var other: Node3D = node as Node3D
 		if other == null:
 			continue

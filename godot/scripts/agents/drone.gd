@@ -52,6 +52,9 @@ signal died(unit: Drone)
 ## Health at spawn, so damage can be reported as a fraction.
 var max_health: float = 0.0
 
+## Latched once the unit is destroyed, so death resolves exactly once.
+var _destroyed: bool = false
+
 ## Detonate when killed, damaging whatever is nearby.
 @export var explodes_on_death: bool = true
 
@@ -102,7 +105,7 @@ func _ready() -> void:
 		# Editor overrides get pruned and factory-spawned units have no scene
 		# reference, so fall back to the group.
 		swarm = get_tree().get_first_node_in_group(
-			"swarm_" + str(allegiance)
+			Swarm.GROUP_PREFIX + str(allegiance)
 		) as Swarm
 	if swarm != null:
 		swarm.register(self)
@@ -229,12 +232,18 @@ func load_payload(amount: float) -> float:
 
 ## Reduce health and free the unit when it runs out.
 func take_damage(amount: float) -> void:
+	if _destroyed:
+		return
+
 	health -= amount
 	if health > 0.0:
 		return
 
-	# Spawned before deregistering, so the blast (dealt next frame) cannot
-	# catch this drone in it.
+	# Latched: a drone caught in several blasts must only die, and detonate,
+	# once.
+	_destroyed = true
+	health = 0.0
+
 	if explodes_on_death:
 		Explosion.burst(get_tree(), global_position, death_blast_scale)
 

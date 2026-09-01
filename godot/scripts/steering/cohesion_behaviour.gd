@@ -36,7 +36,7 @@ func cohesion_scale() -> float:
 		return 1.0
 	if _commander == null:
 		_commander = get_tree().get_first_node_in_group(
-			"commander_" + str(unit.allegiance)
+			Ship.GROUP_PREFIX + str(unit.allegiance)
 		) as Ship
 		if _commander == null:
 			return 1.0

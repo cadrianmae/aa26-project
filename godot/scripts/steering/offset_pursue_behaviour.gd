@@ -29,7 +29,7 @@ func _ready() -> void:
 		var unit: Drone = agent as Drone
 		if unit != null:
 			leader = get_tree().get_first_node_in_group(
-				"commander_" + str(unit.allegiance)
+				Ship.GROUP_PREFIX + str(unit.allegiance)
 			)
 	# Deferred because the leader's global transform may not be settled during
 	# _ready(). Resolving leader above, before this call is queued, ensures

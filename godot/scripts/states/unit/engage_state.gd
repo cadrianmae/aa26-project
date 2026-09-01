@@ -83,7 +83,7 @@ func acquire() -> Node3D:
 	var closest: Node3D = null
 	var closest_score: float = acquire_range
 
-	for node in get_tree().get_nodes_in_group("swarm_" + str(enemy)):
+	for node in get_tree().get_nodes_in_group(Swarm.GROUP_PREFIX + str(enemy)):
 		var swarm: Swarm = node as Swarm
 		if swarm == null:
 			continue
@@ -95,7 +95,7 @@ func acquire() -> Node3D:
 				closest_score = distance
 				closest = drone
 
-	for node in get_tree().get_nodes_in_group("commander_" + str(enemy)):
+	for node in get_tree().get_nodes_in_group(Ship.GROUP_PREFIX + str(enemy)):
 		var ship: Node3D = node as Node3D
 		if ship == null:
 			continue
@@ -121,7 +121,7 @@ func acquire() -> Node3D:
 func _enemy_commander(enemy: int) -> Node3D:
 	var closest: Node3D = null
 	var closest_distance: float = INF
-	for node in get_tree().get_nodes_in_group("commander_" + str(enemy)):
+	for node in get_tree().get_nodes_in_group(Ship.GROUP_PREFIX + str(enemy)):
 		var ship: Node3D = node as Node3D
 		if ship == null or not is_instance_valid(ship):
 			continue

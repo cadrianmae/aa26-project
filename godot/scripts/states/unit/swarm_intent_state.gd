@@ -123,26 +123,6 @@ func _should_detonate() -> bool:
 
 ## Distance to the closest hostile, or INF when the field is clear.
 func _nearest_enemy_distance() -> float:
-	var enemy: int = 1 - unit.allegiance
-	var closest: float = INF
-
-	for node in get_tree().get_nodes_in_group("swarm_" + str(enemy)):
-		var swarm: Swarm = node as Swarm
-		if swarm == null:
-			continue
-		for drone in swarm.units:
-			if drone == null or not is_instance_valid(drone):
-				continue
-			closest = minf(
-				closest, unit.global_position.distance_to(drone.global_position)
-			)
-
-	for node in get_tree().get_nodes_in_group("commander_" + str(enemy)):
-		var ship: Node3D = node as Node3D
-		if ship == null or not is_instance_valid(ship):
-			continue
-		closest = minf(
-			closest, unit.global_position.distance_to(ship.global_position)
-		)
-
-	return closest
+	return Swarm.nearest_hostile_distance(
+		get_tree(), unit.global_position, 1 - unit.allegiance
+	)

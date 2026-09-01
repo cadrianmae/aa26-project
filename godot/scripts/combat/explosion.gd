@@ -41,7 +41,11 @@ func _ready() -> void:
 	_build_particles()
 	_build_light()
 	_build_sound()
-	_deal_blast()
+	# Deferred, not called here: _ready runs inside add_child, so a blast dealt
+	# now would kill neighbours on this same call stack, and each of their
+	# explosions would deal its blast inside this one. Deferring unwinds the
+	# stack between links, so a chain spreads over frames instead of recursing.
+	_deal_blast.call_deferred()
 
 
 func _process(delta: float) -> void:
@@ -150,8 +154,8 @@ func _render_report() -> AudioStreamWAV:
 func _deal_blast() -> void:
 	if blast_damage <= 0.0:
 		return
-	for group in ["swarm_0", "swarm_1"]:
-		for node in get_tree().get_nodes_in_group(group):
+	for side in [0, 1]:
+		for node in get_tree().get_nodes_in_group(Swarm.GROUP_PREFIX + str(side)):
 			var swarm: Swarm = node as Swarm
 			if swarm == null:
 				continue
@@ -163,8 +167,8 @@ func _deal_blast() -> void:
 				if global_position.distance_to(drone.global_position) <= blast_radius:
 					drone.take_damage(blast_damage)
 
-	for side in ["commander_0", "commander_1"]:
-		for node in get_tree().get_nodes_in_group(side):
+	for side in [0, 1]:
+		for node in get_tree().get_nodes_in_group(Ship.GROUP_PREFIX + str(side)):
 			var hull: Node3D = node as Node3D
 			if hull == null or not is_instance_valid(hull):
 				continue

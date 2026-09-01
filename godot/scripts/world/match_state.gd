@@ -29,7 +29,7 @@ func _ready() -> void:
 
 func _watch_commanders() -> void:
 	for side in [0, 1]:
-		for node in get_tree().get_nodes_in_group("commander_" + str(side)):
+		for node in get_tree().get_nodes_in_group(Ship.GROUP_PREFIX + str(side)):
 			var ship: Ship = node as Ship
 			if ship == null or _watched.has(ship):
 				continue

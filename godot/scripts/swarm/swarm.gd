@@ -8,6 +8,9 @@
 class_name Swarm
 extends Node
 
+## Group each Swarm joins, suffixed with its allegiance.
+const GROUP_PREFIX: String = "swarm_"
+
 ## What the swarm has been told to do. One order for the whole swarm, not per
 ## unit.
 ##
@@ -91,7 +94,7 @@ func _ready() -> void:
 		cell_size = neighbour_distance
 
 	# Group lookup is how spawned units find their swarm.
-	add_to_group("swarm_" + str(allegiance))
+	add_to_group(Swarm.GROUP_PREFIX + str(allegiance))
 
 
 ## Add a unit to this swarm. Called by the unit itself on ready, so units
@@ -219,3 +222,62 @@ func _draw_gizmos() -> void:
 			DebugDraw3D.draw_sphere(
 				unit.global_position, neighbour_distance, Color.WEB_PURPLE
 			)
+
+
+## Every live commander and drone belonging to [param enemy_allegiance].
+##
+## Drones are reached through their Swarm rather than a group: they never join
+## one, the Swarm owns its units.
+## is_instance_valid comes BEFORE every cast: casting a freed object throws,
+## so a check afterwards never runs.
+static func hostiles_of(tree: SceneTree, enemy_allegiance: int) -> Array[Node3D]:
+	var found: Array[Node3D] = []
+
+	for node in tree.get_nodes_in_group(Ship.GROUP_PREFIX + str(enemy_allegiance)):
+		if not is_instance_valid(node):
+			continue
+		var ship: Node3D = node as Node3D
+		if ship != null:
+			found.append(ship)
+
+	for node in tree.get_nodes_in_group(GROUP_PREFIX + str(enemy_allegiance)):
+		if not is_instance_valid(node):
+			continue
+		var swarm: Swarm = node as Swarm
+		if swarm == null:
+			continue
+		for unit in swarm.units:
+			if not is_instance_valid(unit):
+				continue
+			var drone: Node3D = unit as Node3D
+			if drone != null:
+				found.append(drone)
+
+	return found
+
+
+## The closest hostile to [param from] within [param max_distance], or null.
+static func nearest_hostile(
+	tree: SceneTree,
+	from: Vector3,
+	enemy_allegiance: int,
+	max_distance: float = INF
+) -> Node3D:
+	var closest: Node3D = null
+	var closest_distance: float = max_distance
+	for hostile in hostiles_of(tree, enemy_allegiance):
+		var distance: float = from.distance_to(hostile.global_position)
+		if distance < closest_distance:
+			closest_distance = distance
+			closest = hostile
+	return closest
+
+
+## Distance to the closest hostile, or INF when the field is clear.
+static func nearest_hostile_distance(
+	tree: SceneTree, from: Vector3, enemy_allegiance: int
+) -> float:
+	var closest: Node3D = nearest_hostile(tree, from, enemy_allegiance)
+	if closest == null:
+		return INF
+	return from.distance_to(closest.global_position)

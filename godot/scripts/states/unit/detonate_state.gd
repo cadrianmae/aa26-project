@@ -39,32 +39,9 @@ func _enter() -> void:
 func _acquire() -> void:
 	if unit == null:
 		return
-	var enemy: int = 1 - unit.allegiance
-	var closest: Node3D = null
-	var closest_distance: float = INF
-
-	for node in get_tree().get_nodes_in_group("swarm_" + str(enemy)):
-		var swarm: Swarm = node as Swarm
-		if swarm == null:
-			continue
-		for drone in swarm.units:
-			if drone == null:
-				continue
-			var distance: float = unit.global_position.distance_to(drone.global_position)
-			if distance < closest_distance:
-				closest_distance = distance
-				closest = drone
-
-	for node in get_tree().get_nodes_in_group("commander_" + str(enemy)):
-		var ship: Node3D = node as Node3D
-		if ship == null:
-			continue
-		var distance: float = unit.global_position.distance_to(ship.global_position)
-		if distance < closest_distance:
-			closest_distance = distance
-			closest = ship
-
-	target = closest
+	target = Swarm.nearest_hostile(
+		get_tree(), unit.global_position, 1 - unit.allegiance
+	)
 	var seek: SeekBehaviour = unit.get_node_or_null(
 		NodePath(seek_behaviour_name)
 	) as SeekBehaviour
@@ -97,7 +74,7 @@ func detonate() -> void:
 	var enemy: int = 1 - unit.allegiance
 	var centre: Vector3 = unit.global_position
 
-	for node in get_tree().get_nodes_in_group("swarm_" + str(enemy)):
+	for node in get_tree().get_nodes_in_group(Swarm.GROUP_PREFIX + str(enemy)):
 		var swarm: Swarm = node as Swarm
 		if swarm == null:
 			continue
@@ -109,7 +86,7 @@ func detonate() -> void:
 			if centre.distance_to(drone.global_position) <= blast_radius:
 				drone.take_damage(blast_damage)
 
-	for node in get_tree().get_nodes_in_group("commander_" + str(enemy)):
+	for node in get_tree().get_nodes_in_group(Ship.GROUP_PREFIX + str(enemy)):
 		var ship: Node3D = node as Node3D
 		if ship == null or not ship.has_method("take_damage"):
 			continue

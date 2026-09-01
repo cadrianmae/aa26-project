@@ -146,9 +146,8 @@ func _process(delta: float) -> void:
 ## nothing urgent to say and the swarm should decide.
 func _ship_situation() -> Variant:
 	if ship == null:
-		# "commander_", not "ship_": that is the group Ship._ready() joins.
 		ship = get_tree().get_first_node_in_group(
-			"commander_" + str(watched_allegiance)
+			Ship.GROUP_PREFIX + str(watched_allegiance)
 		) as Ship
 	if ship == null:
 		return null
@@ -172,7 +171,7 @@ func _ship_situation() -> Variant:
 func situation() -> Phase:
 	if _swarm == null:
 		var found: Array = get_tree().get_nodes_in_group(
-			"swarm_" + str(watched_allegiance)
+			Swarm.GROUP_PREFIX + str(watched_allegiance)
 		)
 		if found.is_empty():
 			return current_phase

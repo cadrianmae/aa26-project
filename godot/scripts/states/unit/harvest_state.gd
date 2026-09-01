@@ -169,7 +169,7 @@ func _designated() -> Barnacle:
 	# Nearest to the COMMANDER, not to this drone.
 	var from: Vector3 = unit.global_position
 	var commander: Node3D = get_tree().get_first_node_in_group(
-		"commander_" + str(unit.allegiance)
+		Ship.GROUP_PREFIX + str(unit.allegiance)
 	) as Node3D
 	if commander != null and is_instance_valid(commander):
 		from = commander.global_position

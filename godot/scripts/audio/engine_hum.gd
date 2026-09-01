@@ -125,7 +125,7 @@ func _process(delta: float) -> void:
 func _track_ship(delta: float) -> void:
 	if ship == null:
 		ship = get_tree().get_first_node_in_group(
-			"commander_" + str(allegiance)
+			Ship.GROUP_PREFIX + str(allegiance)
 		) as Ship
 	var target: float = 0.0
 	if ship != null and ship.max_speed > 0.0:

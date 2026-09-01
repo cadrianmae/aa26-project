@@ -36,7 +36,7 @@ var _phase: float = 0.0
 
 func _enter() -> void:
 	centre = get_tree().get_first_node_in_group(
-		"commander_" + str(unit.allegiance)
+		Ship.GROUP_PREFIX + str(unit.allegiance)
 	) as Node3D
 
 	if point == null:
@@ -92,29 +92,6 @@ func _advance_point() -> void:
 
 ## Nearest hostile unit within [member contact_range], or null.
 func _nearest_enemy() -> Node3D:
-	var enemy: int = 1 - unit.allegiance
-	var closest: Node3D = null
-	var closest_distance: float = contact_range
-
-	for node in get_tree().get_nodes_in_group("swarm_" + str(enemy)):
-		var swarm: Swarm = node as Swarm
-		if swarm == null:
-			continue
-		for drone in swarm.units:
-			if drone == null:
-				continue
-			var distance: float = unit.global_position.distance_to(drone.global_position)
-			if distance < closest_distance:
-				closest_distance = distance
-				closest = drone
-
-	for node in get_tree().get_nodes_in_group("commander_" + str(enemy)):
-		var ship: Node3D = node as Node3D
-		if ship == null:
-			continue
-		var distance: float = unit.global_position.distance_to(ship.global_position)
-		if distance < closest_distance:
-			closest_distance = distance
-			closest = ship
-
-	return closest
+	return Swarm.nearest_hostile(
+		get_tree(), unit.global_position, 1 - unit.allegiance, contact_range
+	)

@@ -217,7 +217,7 @@ func available_contacts() -> Array:
 	var from: Vector3 = ship.global_position
 	var enemy: int = 1 - ship.allegiance
 
-	for node in get_tree().get_nodes_in_group("commander_" + str(enemy)):
+	for node in get_tree().get_nodes_in_group(Ship.GROUP_PREFIX + str(enemy)):
 		var other: Node3D = node as Node3D
 		if other == null or not is_instance_valid(other):
 			continue
@@ -229,7 +229,7 @@ func available_contacts() -> Array:
 				"distance": from.distance_to(other.global_position),
 			})
 
-	for node in get_tree().get_nodes_in_group("swarm_" + str(enemy)):
+	for node in get_tree().get_nodes_in_group(Swarm.GROUP_PREFIX + str(enemy)):
 		var swarm: Swarm = node as Swarm
 		if swarm == null:
 			continue

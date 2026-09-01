@@ -132,12 +132,12 @@ func _process(delta: float) -> void:
 ## Follow the swarm's size, distance and speed.
 func _track_swarm(delta: float) -> void:
 	if _swarm == null:
-		var found: Array = get_tree().get_nodes_in_group("swarm_" + str(allegiance))
+		var found: Array = get_tree().get_nodes_in_group(Swarm.GROUP_PREFIX + str(allegiance))
 		if not found.is_empty():
 			_swarm = found[0] as Swarm
 	if _listener == null:
 		_listener = get_tree().get_first_node_in_group(
-			"commander_" + str(allegiance)
+			Ship.GROUP_PREFIX + str(allegiance)
 		) as Node3D
 
 	var target_presence: float = 0.0

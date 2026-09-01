@@ -136,7 +136,7 @@ func _resolve() -> void:
 	if _camera != null and not is_instance_valid(_camera):
 		_camera = null
 	if _ship == null:
-		_ship = tree.get_first_node_in_group("commander_" + str(allegiance)) as Node3D
+		_ship = tree.get_first_node_in_group(Ship.GROUP_PREFIX + str(allegiance)) as Node3D
 	if _field == null:
 		_field = tree.get_root().find_child("AsteroidField", true, false) as Node3D
 	if _wreck == null:
@@ -389,7 +389,7 @@ func _draw_drones() -> void:
 
 
 func _draw_swarm(side: int, colour: Color) -> void:
-	var swarms: Array = get_tree().get_nodes_in_group("swarm_" + str(side))
+	var swarms: Array = get_tree().get_nodes_in_group(Swarm.GROUP_PREFIX + str(side))
 	if swarms.is_empty():
 		return
 	var swarm: Swarm = swarms[0] as Swarm
@@ -414,7 +414,7 @@ func _draw_swarm(side: int, colour: Color) -> void:
 
 ## The enemy Matriarch, as a larger blip than a drone.
 func _draw_rival_ship() -> void:
-	for node in get_tree().get_nodes_in_group("commander_" + str(1 - allegiance)):
+	for node in get_tree().get_nodes_in_group(Ship.GROUP_PREFIX + str(1 - allegiance)):
 		var ship: Node3D = node as Node3D
 		if ship == null:
 			continue

@@ -77,24 +77,7 @@ func choose_target() -> Node3D:
 ## Drones are reached through the enemy [Swarm] rather than a group: they never
 ## join one, the swarm owns its units.
 func hostiles() -> Array[Node3D]:
-	var found: Array[Node3D] = []
-	var enemy: int = 1 - ship.allegiance
-
-	for node in get_tree().get_nodes_in_group("commander_" + str(enemy)):
-		var other: Node3D = node as Node3D
-		if other != null:
-			found.append(other)
-
-	for node in get_tree().get_nodes_in_group("swarm_" + str(enemy)):
-		var swarm: Swarm = node as Swarm
-		if swarm == null:
-			continue
-		for unit in swarm.units:
-			var drone: Node3D = unit as Node3D
-			if drone != null and is_instance_valid(drone):
-				found.append(drone)
-
-	return found
+	return Swarm.hostiles_of(get_tree(), 1 - ship.allegiance)
 
 
 ## Whether the ship is pointing near enough at [param target] to fire.
