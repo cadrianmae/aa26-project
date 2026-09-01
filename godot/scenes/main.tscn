@@ -4,13 +4,9 @@
 [ext_resource type="PackedScene" path="res://scenes/units/drone.tscn" id="3_85g3d"]
 [ext_resource type="Script" uid="uid://btxnggqj3n2nw" path="res://scripts/control/follow_camera.gd" id="7_trceg"]
 [ext_resource type="Script" uid="uid://b237ok7x8y26b" path="res://scripts/audio/music_director.gd" id="8_musdir"]
-[ext_resource type="AudioStream" uid="uid://bfm4p5ar7akyu" path="res://assets/audio/blue_danube.ogg" id="9_launch"]
-[ext_resource type="AudioStream" uid="uid://d26d72hh6s6dq" path="res://assets/audio/jupiter.ogg" id="10_harvest"]
-[ext_resource type="AudioStream" uid="uid://d3wpxbxldao3r" path="res://assets/audio/ride_of_the_valkyries.ogg" id="11_combat"]
-[ext_resource type="AudioStream" uid="uid://3ft0dvb4wgky" path="res://assets/audio/great_gate_of_kiev.ogg" id="12_patrol"]
-[ext_resource type="AudioStream" uid="uid://ucl8fh27sff0" path="res://assets/audio/baba_yagas_hut.ogg" id="13_flee"]
-[ext_resource type="AudioStream" uid="uid://s37p0by2knya" path="res://assets/audio/hall_of_the_mountain_king.ogg" id="14_victory"]
-[ext_resource type="AudioStream" uid="uid://cetkjnuhp8hjn" path="res://assets/audio/night_on_the_bare_mountain.ogg" id="15_defeat"]
+[ext_resource type="AudioStream" uid="uid://ci2q2u65cctu0" path="res://assets/audio/maegameresource.ogg" id="12_patrol"]
+[ext_resource type="AudioStream" uid="uid://jpcd4hve6dm8" path="res://assets/audio/musicforaspacebattle.ogg" id="13_flee"]
+[ext_resource type="AudioStream" uid="uid://dct3q85b43g62" path="res://assets/audio/mainmaenu.ogg" id="15_defeat"]
 [ext_resource type="Script" uid="uid://7honk5i5a3xo" path="res://scripts/world/dust_field.gd" id="17_dustfield"]
 [ext_resource type="Script" uid="uid://cdfg3bufo2w7h" path="res://scripts/swarm/swarm.gd" id="18_pswarm"]
 [ext_resource type="Script" uid="uid://blfimmr306kxa" path="res://scripts/world/threat.gd" id="19_threat"]
@@ -33,6 +29,7 @@
 [ext_resource type="Script" uid="uid://cr4r4ydys71br" path="res://scripts/audio/engine_hum.gd" id="38_hum"]
 [ext_resource type="Script" uid="uid://kknrbx4fqg5o" path="res://scripts/audio/swarm_roar.gd" id="39_roar"]
 [ext_resource type="Script" uid="uid://bvbvvh4fr7bsy" path="res://scripts/ui/status_panel.gd" id="40_status"]
+[ext_resource type="Script" uid="uid://ctf0xo66ef3d1" path="res://scripts/ui/match_banner.gd" id="41_banner"]
 
 [sub_resource type="ShaderMaterial" id="SkyMaterial_star"]
 shader = ExtResource("34_sky")
@@ -191,6 +188,16 @@ script = ExtResource("19_threat")
 
 [node name="HUD" type="CanvasLayer" parent="PixelView/SubViewport" unique_id=1207743310]
 
+[node name="MatchBanner" type="Control" parent="PixelView/SubViewport/HUD" unique_id=1798031942]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("41_banner")
+
 [node name="Radar" type="Control" parent="PixelView/SubViewport/HUD" unique_id=1533664052]
 layout_mode = 3
 anchors_preset = 7
@@ -257,10 +264,10 @@ script = ExtResource("39_roar")
 
 [node name="MusicDirector" type="AudioStreamPlayer" parent="." unique_id=1801350074]
 script = ExtResource("8_musdir")
-launch_theme = ExtResource("9_launch")
-harvest_theme = ExtResource("10_harvest")
-combat_theme = ExtResource("11_combat")
+launch_theme = ExtResource("15_defeat")
+harvest_theme = ExtResource("12_patrol")
+combat_theme = ExtResource("13_flee")
 patrol_theme = ExtResource("12_patrol")
 flee_theme = ExtResource("13_flee")
-victory_theme = ExtResource("14_victory")
+victory_theme = ExtResource("15_defeat")
 defeat_theme = ExtResource("15_defeat")

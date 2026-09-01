@@ -74,6 +74,10 @@ func _process(_delta: float) -> void:
 ## order, so this Control can be ready before the ship it reports on. The
 ## project has been bitten by that four times now.
 func _resolve() -> void:
+	# A destroyed commander is freed, and a freed node is not null.
+	if _ship != null and not is_instance_valid(_ship):
+		_ship = null
+		_targeting = null
 	if _ship == null:
 		_ship = get_tree().get_first_node_in_group(
 			"commander_" + str(allegiance)
@@ -87,6 +91,8 @@ func _draw() -> void:
 	if _ship == null:
 		return
 
+	if not is_instance_valid(_ship):
+		return
 	if mode == Mode.OWN_SHIP:
 		_draw_panel("MATRIARCH", _hull_fraction(_ship), player_colour, _ship_points())
 		return
