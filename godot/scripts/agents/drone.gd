@@ -111,10 +111,7 @@ func _ready() -> void:
 ## Cache the child behaviours once rather than walking the child list every
 ## physics frame. Call again if behaviours are added at run time.
 func _collect_behaviours() -> void:
-	behaviours.clear()
-	for child in get_children():
-		if child is SteeringBehaviour:
-			behaviours.append(child)
+	behaviours = SteeringBehaviour.children_of(self)
 
 
 func _process(_delta: float) -> void:
@@ -160,38 +157,14 @@ func calculate_force() -> Vector3:
 	return total_force
 
 
-## Clamp a force into the cone the drone can actually thrust through.
-##
-## Braking is exempt: thrust opposing velocity is not a dodged turn.
-func _limit_to_steering_arc(desired: Vector3) -> Vector3:
-	if max_steer_angle >= 180.0 or desired.length_squared() < 0.0001:
-		return desired
-
-	# +Z is the nose in this codebase, not Vector3.FORWARD.
-	var nose: Vector3 = global_basis.z
-	nose.y = 0.0
-	if nose.length_squared() < 0.0001:
-		return desired
-	nose = nose.normalized()
-
-	var direction: Vector3 = desired.normalized()
-	var limit: float = deg_to_rad(max_steer_angle)
-	var offset: float = nose.signed_angle_to(direction, Vector3.UP)
-	if absf(offset) <= limit:
-		return desired
-
-	if velocity.length_squared() > 0.01 and desired.dot(velocity) < 0.0:
-		return desired
-
-	return nose.rotated(Vector3.UP, clampf(offset, -limit, limit)) * desired.length()
-
-
 # --- Integration (fixed-timestep plumbing) --------------------------------
 
 func _physics_process(delta: float) -> void:
 	var new_force: Vector3 = calculate_force()
 	new_force.y = 0.0
-	new_force = _limit_to_steering_arc(new_force)
+	new_force = SteeringBehaviour.limit_to_arc(
+		new_force, global_basis, velocity, max_steer_angle
+	)
 
 	# Low-pass filter the applied force so it chases the newly computed force
 	# rather than snapping to it. Removes jitter when a behaviour switches on

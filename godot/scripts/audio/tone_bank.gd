@@ -8,6 +8,9 @@
 class_name ToneBank
 extends RefCounted
 
+## Peak amplitude a rendered stream is normalised to, leaving clipping headroom.
+const PEAK_TARGET: float = 0.92
+
 
 ## An empty one-second mix buffer at the given rate.
 static func buffer(rate: int) -> PackedFloat32Array:
@@ -46,7 +49,7 @@ static func to_stream(mix: PackedFloat32Array, rate: int) -> AudioStreamWAV:
 	var peak: float = 0.0
 	for value in mix:
 		peak = maxf(peak, absf(value))
-	var scale: float = 0.92 / maxf(peak, 0.0001)
+	var scale: float = PEAK_TARGET / maxf(peak, 0.0001)
 
 	var data: PackedByteArray = PackedByteArray()
 	data.resize(mix.size() * 2)

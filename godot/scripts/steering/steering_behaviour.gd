@@ -98,3 +98,45 @@ func arrive_towards(destination: Vector3, slowing_radius: float) -> Vector3:
 	var clamped: float = minf(agent.max_speed, ramped)
 	var desired: Vector3 = (to_target * clamped) / dist
 	return desired - agent.velocity
+
+
+## Every SteeringBehaviour that is a direct child of [param node].
+static func children_of(node: Node) -> Array[SteeringBehaviour]:
+	var found: Array[SteeringBehaviour] = []
+	for child in node.get_children():
+		if child is SteeringBehaviour:
+			found.append(child)
+	return found
+
+
+## Clamp [param desired] into an arc of [param max_steer_angle] degrees either
+## side of the agent's nose, leaving it untouched when already inside the arc.
+##
+## [param basis] is the agent's global basis; +Z is the nose in this codebase,
+## not Vector3.FORWARD. Braking is exempt: thrust opposing [param velocity] is
+## returned unclamped.
+static func limit_to_arc(
+	desired: Vector3,
+	basis: Basis,
+	velocity: Vector3,
+	max_steer_angle: float
+) -> Vector3:
+	if max_steer_angle >= 180.0 or desired.length_squared() < 0.0001:
+		return desired
+
+	var nose: Vector3 = basis.z
+	nose.y = 0.0
+	if nose.length_squared() < 0.0001:
+		return desired
+	nose = nose.normalized()
+
+	var direction: Vector3 = desired.normalized()
+	var limit: float = deg_to_rad(max_steer_angle)
+	var offset: float = nose.signed_angle_to(direction, Vector3.UP)
+	if absf(offset) <= limit:
+		return desired
+
+	if velocity.length_squared() > 0.01 and desired.dot(velocity) < 0.0:
+		return desired
+
+	return nose.rotated(Vector3.UP, clampf(offset, -limit, limit)) * desired.length()

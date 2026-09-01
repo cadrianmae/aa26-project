@@ -17,14 +17,17 @@ func _ready() -> void:
 	var material: ShaderMaterial = ShaderMaterial.new()
 	material.shader = load("res://shaders/flat_hull.gdshader")
 	material.set_shader_parameter("tint", tint)
-	_apply(self, material)
+	paint_subtree(self, material, apply_to_children)
 
 
-## Walk the subtree and put [param material] on every MeshInstance3D.
-func _apply(node: Node, material: ShaderMaterial) -> void:
+## Put [param material] on [param node], and on every MeshInstance3D beneath it
+## when [param recurse] is true.
+static func paint_subtree(
+	node: Node, material: ShaderMaterial, recurse: bool = true
+) -> void:
 	if node is MeshInstance3D:
 		node.material_override = material
-	if not apply_to_children:
+	if not recurse:
 		return
 	for child in node.get_children():
-		_apply(child, material)
+		paint_subtree(child, material, recurse)

@@ -156,11 +156,4 @@ func _tint(rock: Node3D) -> void:
 	var material: ShaderMaterial = ShaderMaterial.new()
 	material.shader = load("res://shaders/flat_hull.gdshader")
 	material.set_shader_parameter("tint", tint)
-	_apply(rock, material)
-
-
-func _apply(node: Node, material: ShaderMaterial) -> void:
-	if node is MeshInstance3D:
-		node.material_override = material
-	for child in node.get_children():
-		_apply(child, material)
+	ModelledHull.paint_subtree(rock, material)

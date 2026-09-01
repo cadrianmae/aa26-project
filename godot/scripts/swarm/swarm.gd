@@ -61,6 +61,10 @@ var harvest_target: Barnacle
 ## never collide onto one key for any position this game reaches.
 @export var grid_size: int = 10000
 
+## World-space offset applied before hashing, in world units, so every
+## component is non-negative.
+const ORIGIN_SHIFT: float = 10000.0
+
 ## When false, falls back to the naive O(n squared) scan.
 @export var partition: bool = true
 
@@ -127,13 +131,12 @@ func _process(_delta: float) -> void:
 
 ## Hash a world position to a single integer cell key.
 ##
-## Two separate quantities here both happen to be 10000. The literal 10000.0
-## is a world-space offset in world units, added so every component is
-## non-negative; without it the positional encoding aliases distinct cells onto
-## one key. [member grid_size] is the key stride per axis, in cells. Changing
-## one does not change the other. Duggan, school.gd:29-34.
+## [constant ORIGIN_SHIFT] is a world-space offset in world units, keeping every
+## component non-negative so distinct cells cannot alias onto one key.
+## [member grid_size] is the key stride per axis, in cells. They are unrelated
+## quantities that happen to share a value. Duggan, school.gd:29-34.
 func position_to_cell(p: Vector3) -> int:
-	var shifted: Vector3 = p + Vector3(10000.0, 10000.0, 10000.0)
+	var shifted: Vector3 = p + Vector3(ORIGIN_SHIFT, ORIGIN_SHIFT, ORIGIN_SHIFT)
 	var x: int = int(floor(shifted.x / cell_size))
 	var y: int = int(floor(shifted.y / cell_size))
 	var z: int = int(floor(shifted.z / cell_size))

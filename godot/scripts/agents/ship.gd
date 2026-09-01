@@ -69,10 +69,7 @@ func _ready() -> void:
 ## Cache the child behaviours once rather than walking the child list every
 ## physics frame. Call again if behaviours are added at run time.
 func _collect_behaviours() -> void:
-	behaviours.clear()
-	for child in get_children():
-		if child is SteeringBehaviour:
-			behaviours.append(child)
+	behaviours = SteeringBehaviour.children_of(self)
 
 
 ## Weighted truncated sum of the child behaviours.
@@ -95,7 +92,9 @@ func calculate_force() -> Vector3:
 func _physics_process(delta: float) -> void:
 	var new_force: Vector3 = calculate_force()
 	new_force.y = 0.0
-	new_force = _limit_to_steering_arc(new_force)
+	new_force = SteeringBehaviour.limit_to_arc(
+		new_force, global_basis, velocity, max_steer_angle
+	)
 	force = force.lerp(new_force, delta * 4.0)
 
 	var acceleration: Vector3 = force / mass
@@ -217,24 +216,3 @@ func _regenerate(delta: float) -> void:
 ## Clamp a thrust into the cone the ship can steer through.
 ##
 ## Braking is exempt: thrust opposing velocity is not a dodged turn.
-func _limit_to_steering_arc(desired: Vector3) -> Vector3:
-	if max_steer_angle >= 180.0 or desired.length_squared() < 0.0001:
-		return desired
-
-	# +Z is the nose in this codebase, not Vector3.FORWARD.
-	var nose: Vector3 = global_basis.z
-	nose.y = 0.0
-	if nose.length_squared() < 0.0001:
-		return desired
-	nose = nose.normalized()
-
-	var direction: Vector3 = desired.normalized()
-	var limit: float = deg_to_rad(max_steer_angle)
-	var offset: float = nose.signed_angle_to(direction, Vector3.UP)
-	if absf(offset) <= limit:
-		return desired
-
-	if velocity.length_squared() > 0.01 and desired.dot(velocity) < 0.0:
-		return desired
-
-	return nose.rotated(Vector3.UP, clampf(offset, -limit, limit)) * desired.length()
