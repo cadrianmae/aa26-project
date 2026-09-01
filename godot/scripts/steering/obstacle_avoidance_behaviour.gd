@@ -44,14 +44,40 @@ extends SteeringBehaviour
 ## would leave a unit that had already stopped against a rock with no force to
 ## get it off again.
 ##
-## Generous, because the belt's rocks scale up to a 21-unit radius. A probe
-## shorter than the obstacle is wide finds nothing until the agent is already
-## inside it -- the first version reached 22 units at a rock whose surface was
-## 23 away, and reported no obstacle at all while flying straight into it.
-@export var minimum_look_ahead: float = 24.0
+## Short, because it only has to cover the slow case. An earlier version set
+## this to 24 -- long enough to see past the belt's largest rocks from a
+## standstill -- which made a drifting unit trail a probe several times its own
+## length. That job now belongs to the contact escape above, which reacts to
+## collisions Godot has already computed rather than trying to predict them
+## from a standstill, so the floor here can be small enough to read as a
+## sensor rather than a searchlight.
+@export var minimum_look_ahead: float = 9.0
 
 ## How hard the sideways push is, relative to the agent's top speed.
-@export var avoid_strength: float = 1.6
+##
+## Low, because it is only the STARTING push -- see [member pressure_gain].
+@export var avoid_strength: float = 0.55
+
+## Extra push added per second while an obstacle stays in front of the agent.
+##
+## A single fixed strength has to be wrong one way or the other: strong enough
+## to escape a rock it is grinding against will fling it sideways every time it
+## passes one, and gentle enough to pass cleanly will not free it. Building the
+## force while the obstacle PERSISTS separates those cases -- brushing past
+## something costs almost nothing, and only a probe that keeps seeing the same
+## rock escalates, which is exactly the situation that needs escalating.
+@export var pressure_gain: float = 1.4
+
+## Ceiling on the accumulated push, so a cornered agent cannot be flung.
+@export var pressure_max: float = 2.5
+
+## Seconds of clear space before the accumulated push resets to nothing.
+##
+## Not instant: a feeler sweeping past the edge of a rock flickers between hit
+## and miss, and resetting on the first clear frame would drop the pressure
+## exactly when the agent is still working its way around. Long enough to ride
+## out the flicker, short enough that open space genuinely clears it.
+@export var pressure_reset_seconds: float = 0.7
 
 ## Extra clearance demanded beyond the hit point.
 ##
@@ -72,11 +98,67 @@ extends SteeringBehaviour
 var _hit_point: Vector3 = Vector3.INF
 var _hit_normal: Vector3 = Vector3.ZERO
 
+## Every feeler cast this frame, hit or not, for the gizmo.
+##
+## Each entry is {from, to, hit}. Rebuilt in [method calculate] rather than
+## recast when drawing: the rays are already paid for, and casting a second set
+## for the display would let what is drawn drift from what actually steered.
+var _drawn_feelers: Array = []
+
+## Colour of a feeler that found nothing.
+@export var clear_colour: Color = Color(0.35, 0.75, 0.45, 0.35)
+
+## Colour of a feeler that hit something.
+@export var blocked_colour: Color = Color(1.0, 0.35, 0.15)
+
+func _ready() -> void:
+	super()
+	# Never on the PLAYER's own ship.
+	#
+	# Avoidance is autonomy, and the player is not autonomous -- a hull that
+	# steers itself away from rocks is one that argues with the stick. Flying
+	# into an asteroid should be the player's mistake to make and their
+	# correction to perform; the rival gets it precisely because nobody is
+	# holding its stick.
+	#
+	# Drones keep it whichever side they belong to, so the test is for a Ship
+	# on allegiance 0 rather than for allegiance alone. Both hives instance the
+	# same scene, which is why this has to be decided here rather than by
+	# leaving the node out.
+	var ship: Ship = agent as Ship
+	if ship != null and ship.allegiance == 0:
+		enabled = false
+		set_process(false)
+
+
+## Accumulated push, built while blocked and released in open space.
+var _pressure: float = 0.0
+
+## Seconds since a feeler last found anything.
+var _clear_for: float = 0.0
+
 
 func calculate() -> Vector3:
 	_hit_point = Vector3.INF
 	if agent == null:
 		return Vector3.ZERO
+
+	# Already touching something: push off it, before any probing.
+	#
+	# The feelers answer "what am I about to hit", which is the wrong question
+	# for an agent that has already hit it. A unit pressed against a rock has
+	# almost no velocity, so its heading is unreliable and its feelers can miss
+	# entirely along the surface -- and meanwhile ArriveBarnacle is producing
+	# well over a thousand units of force against a budget of forty, so it
+	# saturates WTPRS and holds the unit against the rock indefinitely. That is
+	# the stuck case: not a failure to see the obstacle, but a failure to stop
+	# pushing into one already found.
+	#
+	# Godot's own collision normals are the reliable signal here, and they are
+	# free -- move_and_slide has already computed them this frame.
+	var contact: Vector3 = _contact_escape()
+	if contact != Vector3.ZERO:
+		return contact
 
 	# Along the direction of travel where there is one, otherwise along the
 	# nose: a unit sitting still against a rock still needs to see it.
@@ -106,15 +188,26 @@ func calculate() -> Vector3:
 	var normal: Vector3 = Vector3.ZERO
 	var point: Vector3 = Vector3.ZERO
 
+	# Recorded for the gizmo, whether or not anything is found. Drawing only the
+	# feelers that HIT shows nothing most of the time, which makes the
+	# behaviour look inert when it is working perfectly well -- the useful
+	# thing to see is the probe sweeping ahead and lengthening with speed.
+	_drawn_feelers.clear()
+
 	for feeler in feelers:
-		var query := PhysicsRayQueryParameters3D.create(
-			agent.global_position, agent.global_position + feeler[0] * feeler[1]
-		)
+		var from: Vector3 = agent.global_position
+		var to: Vector3 = from + feeler[0] * feeler[1]
+		var query := PhysicsRayQueryParameters3D.create(from, to)
 		query.collision_mask = obstacle_mask
 		# The agent is a body itself; without this a feeler can hit its own
 		# collider on a frame it is already overlapping something.
 		query.exclude = [agent.get_rid()]
 		var hit: Dictionary = space.intersect_ray(query)
+		_drawn_feelers.append({
+			"from": from,
+			"to": hit["position"] if not hit.is_empty() else to,
+			"hit": not hit.is_empty(),
+		})
 		if hit.is_empty():
 			continue
 		# The CLOSEST hit across all three wins. A side feeler finding a rock
@@ -127,8 +220,18 @@ func calculate() -> Vector3:
 			point = hit["position"]
 			found = true
 
+	# Pressure released only after a spell of genuinely clear space, then built
+	# again from the moment something is found. Tracked here rather than in
+	# _process because it must advance in step with the probing that feeds it.
+	var delta: float = get_physics_process_delta_time()
 	if not found:
+		_clear_for += delta
+		if _clear_for >= pressure_reset_seconds:
+			_pressure = 0.0
 		return Vector3.ZERO
+
+	_clear_for = 0.0
+	_pressure = minf(_pressure + pressure_gain * delta, pressure_max)
 
 	_hit_point = point
 	_hit_normal = normal
@@ -152,12 +255,59 @@ func calculate() -> Vector3:
 		1.0 - (nearest - clearance) / maxf(reach, 0.001), 0.0, 1.0
 	)
 
-	return lateral * agent.max_speed * avoid_strength * urgency
+	# Base strength plus whatever has accumulated. At first contact this is the
+	# base alone -- a nudge -- and it grows only for as long as the obstacle
+	# refuses to go away.
+	return lateral * agent.max_speed * (avoid_strength + _pressure) * urgency
 
 
 func on_draw_gizmos() -> void:
 	if agent == null:
 		return
+
+	# All three feelers, always, not just the ones that found something. A probe
+	# drawn only on contact is invisible for most of a match, which reads as the
+	# behaviour being switched off rather than as clear space ahead.
+	for feeler in _drawn_feelers:
+		DebugDraw3D.draw_line(
+			feeler["from"], feeler["to"],
+			blocked_colour if feeler["hit"] else clear_colour
+		)
+
+	# The chosen hit, marked separately: with three feelers it is not obvious
+	# which one the steering actually acted on.
 	if _hit_point.is_finite():
-		DebugDraw3D.draw_line(agent.global_position, _hit_point, Color.ORANGE_RED)
-		DebugDraw3D.draw_sphere(_hit_point, 1.5, Color.ORANGE_RED)
+		DebugDraw3D.draw_sphere(_hit_point, 1.5, blocked_colour)
+
+
+## A push directly off whatever the agent is in contact with.
+##
+## Returns ZERO when nothing is being touched, so this costs a single integer
+## compare on the overwhelming majority of frames.
+##
+## Deliberately strong -- max_speed times the full avoid_strength, with no
+## urgency taper. There is no "how close" to scale by: contact IS the closest
+## an agent can be, and a gentle nudge loses to an arrive force thirty times
+## larger.
+func _contact_escape() -> Vector3:
+	if not (agent is CharacterBody3D):
+		return Vector3.ZERO
+	var body: CharacterBody3D = agent as CharacterBody3D
+	var count: int = body.get_slide_collision_count()
+	if count == 0:
+		return Vector3.ZERO
+
+	# Summed across every contact, so a unit wedged in a crevice is pushed out
+	# of the corner rather than along one wall into the other.
+	var escape := Vector3.ZERO
+	for i in count:
+		var collision: KinematicCollision3D = body.get_slide_collision(i)
+		if collision == null:
+			continue
+		escape += collision.get_normal()
+	escape.y = 0.0
+	if escape.length_squared() < 0.0001:
+		return Vector3.ZERO
+
+	_hit_point = body.global_position
+	return escape.normalized() * agent.max_speed * avoid_strength

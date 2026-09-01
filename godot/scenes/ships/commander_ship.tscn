@@ -95,6 +95,6 @@ projectile_scene = ExtResource("6_projectile")
 cooldown = 0.35
 burst_count = 3
 burst_interval = 0.09
-damage = 14.0
+damage = 4.6
 range = 90.0
 muzzle_offset = 8.0
