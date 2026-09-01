@@ -316,7 +316,7 @@ func _intent_colour(intent: Swarm.Intent) -> Color:
 		Swarm.Intent.ENGAGE:
 			return Color(1.0, 0.42, 0.30)
 		Swarm.Intent.HARVEST:
-			return Color(0.62, 0.82, 0.23)
+			return Palette.BARNACLE
 		Swarm.Intent.PATROL:
-			return Color(0.85, 0.64, 0.26)
+			return Palette.RIVAL
 	return Color(0.7, 0.75, 0.8)

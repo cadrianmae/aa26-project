@@ -96,7 +96,7 @@ func _resolve_swarm() -> void:
 func _process(delta: float) -> void:
 	if draw_gizmos:
 		DebugDraw3D.draw_sphere(
-			global_position, deposit_radius, Color(0.435, 0.812, 0.353)
+			global_position, deposit_radius, Palette.PLAYER
 		)
 
 	_since_build += delta

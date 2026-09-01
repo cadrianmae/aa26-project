@@ -17,8 +17,8 @@ extends MeshInstance3D
 ## Pulses per second.
 @export var pulse_hz: float = 1.1
 
-@export var rival_colour: Color = Color(0.851, 0.643, 0.255)
-@export var barnacle_colour: Color = Color(0.62, 0.82, 0.23)
+@export var rival_colour: Color = Palette.RIVAL
+@export var barnacle_colour: Color = Palette.BARNACLE
 
 var _targeting: Targeting
 var _material: StandardMaterial3D

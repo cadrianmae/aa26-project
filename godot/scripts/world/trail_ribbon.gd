@@ -22,7 +22,7 @@ extends MeshInstance3D
 
 ## Colour at the tail. Alpha should reach zero so the ribbon fades out rather
 ## than ending on a hard edge.
-@export var tail_colour: Color = Color(0.65, 0.12, 0.03, 0.0)
+@export var tail_colour: Color = Color(Palette.THRUST, 0.0)
 
 ## Recorded world positions, newest last.
 var _history: PackedVector3Array = PackedVector3Array()

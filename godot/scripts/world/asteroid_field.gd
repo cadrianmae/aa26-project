@@ -25,7 +25,7 @@ extends Node3D
 @export var seed_value: int = 20260830
 
 ## Colour multiplied into every placed rock.
-@export var tint: Color = Color(0.42, 0.39, 0.34)
+@export var tint: Color = Palette.ROCK
 
 @export_group("Barnacles")
 

@@ -32,7 +32,7 @@ extends Control
 @export var subtitle_size: int = 10
 
 @export_group("Colours")
-@export var victory_colour: Color = Color(0.435, 0.812, 0.353)
+@export var victory_colour: Color = Palette.PLAYER
 @export var defeat_colour: Color = Color(1.0, 0.42, 0.30)
 
 ## The winning side, or -1 while the match is still running.

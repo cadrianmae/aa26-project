@@ -8,11 +8,11 @@ extends Control
 @export var allegiance: int = 0
 
 @export_group("Colours")
-@export var background_colour: Color = Color(0.02, 0.04, 0.03, 0.6)
-@export var frame_colour: Color = Color(0.435, 0.812, 0.353, 0.6)
-@export var text_colour: Color = Color(0.435, 0.812, 0.353)
-@export var alloy_colour: Color = Color(0.62, 0.82, 0.23)
-@export var bar_empty_colour: Color = Color(0.435, 0.812, 0.353, 0.22)
+@export var background_colour: Color = Color(Palette.PANEL_BACKING, 0.6)
+@export var frame_colour: Color = Color(Palette.PLAYER, 0.6)
+@export var text_colour: Color = Palette.PLAYER
+@export var alloy_colour: Color = Palette.BARNACLE
+@export var bar_empty_colour: Color = Color(Palette.PLAYER, 0.22)
 
 ## Segments in the "next drone" bar.
 @export var segments: int = 10

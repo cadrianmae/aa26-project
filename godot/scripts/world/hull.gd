@@ -36,10 +36,10 @@ enum RenderStyle {
 @export var use_faction_colour: bool = true
 
 ## The player hive's hull colour.
-@export var player_colour: Color = Color(0.435, 0.812, 0.353)
+@export var player_colour: Color = Palette.PLAYER
 
 ## The rival hive's hull colour.
-@export var rival_colour: Color = Color(0.851, 0.643, 0.255)
+@export var rival_colour: Color = Palette.RIVAL
 
 ## Uniform scale applied to the authored vertex list.
 @export var hull_scale: float = 1.0

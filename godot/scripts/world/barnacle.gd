@@ -115,13 +115,13 @@ func _process(delta: float) -> void:
 
 	if not draw_gizmos:
 		return
-	var colour: Color = Color(0.42, 0.39, 0.34).lerp(
-		Color(0.62, 0.82, 0.23), fullness()
+	var colour: Color = Palette.ROCK.lerp(
+		Palette.BARNACLE, fullness()
 	)
 	DebugDraw3D.draw_sphere(global_position, harvest_radius, colour)
 	if not is_free():
 		DebugDraw3D.draw_line(
-			global_position, occupant.global_position, Color(0.62, 0.82, 0.23)
+			global_position, occupant.global_position, Palette.BARNACLE
 		)
 
 

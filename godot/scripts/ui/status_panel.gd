@@ -38,12 +38,12 @@ enum Mode { OWN_SHIP, TARGET }
 @export var arc_thickness: float = 3.0
 
 @export_group("Colours")
-@export var player_colour: Color = Color(0.435, 0.812, 0.353)
-@export var rival_colour: Color = Color(0.851, 0.643, 0.255)
-@export var barnacle_colour: Color = Color(0.62, 0.82, 0.23)
-@export var ring_colour: Color = Color(0.435, 0.812, 0.353, 0.30)
+@export var player_colour: Color = Palette.PLAYER
+@export var rival_colour: Color = Palette.RIVAL
+@export var barnacle_colour: Color = Palette.BARNACLE
+@export var ring_colour: Color = Color(Palette.PLAYER, 0.30)
 @export var damage_colour: Color = Color(1.0, 0.42, 0.30)
-@export var empty_colour: Color = Color(0.435, 0.812, 0.353, 0.16)
+@export var empty_colour: Color = Color(Palette.PLAYER, 0.16)
 
 const CURVE_SEGMENTS: int = 28
 

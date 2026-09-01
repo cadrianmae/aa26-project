@@ -47,7 +47,7 @@ extends Control
 @export var arc_screen_span_degrees: float = 104.0
 
 ## Colour of the north marker on the disc rim.
-@export var north_colour: Color = Color(0.851, 0.643, 0.255)
+@export var north_colour: Color = Palette.RIVAL
 
 @export_group("Speed bar")
 
@@ -79,25 +79,25 @@ extends Control
 @export var speed_bar_thickness: float = 4.0
 
 @export_group("Colours")
-@export var disc_colour: Color = Color(0.02, 0.04, 0.03, 0.66)
-@export var rim_colour: Color = Color(0.435, 0.812, 0.353, 0.75)
-@export var ring_colour: Color = Color(0.435, 0.812, 0.353, 0.22)
-@export var ship_colour: Color = Color(0.435, 0.812, 0.353)
-@export var drone_colour: Color = Color(0.435, 0.812, 0.353, 0.9)
+@export var disc_colour: Color = Color(Palette.PANEL_BACKING, 0.66)
+@export var rim_colour: Color = Color(Palette.PLAYER, 0.75)
+@export var ring_colour: Color = Color(Palette.PLAYER, 0.22)
+@export var ship_colour: Color = Palette.PLAYER
+@export var drone_colour: Color = Color(Palette.PLAYER, 0.9)
 @export var fleeing_colour: Color = Color(1.0, 0.42, 0.30)
 
 ## The rival hive's amber.
-@export var rival_colour: Color = Color(0.851, 0.643, 0.255)
-@export var rock_colour: Color = Color(0.42, 0.39, 0.34)
+@export var rival_colour: Color = Palette.RIVAL
+@export var rock_colour: Color = Palette.ROCK
 @export var wreck_colour: Color = Color(0.62, 0.62, 0.66, 0.85)
 @export var threat_colour: Color = Color(1.0, 0.35, 0.25)
 @export var rally_colour: Color = Color(0.4, 1.0, 0.6)
-@export var arc_colour: Color = Color(0.435, 0.812, 0.353, 0.55)
-@export var cardinal_colour: Color = Color(0.435, 0.812, 0.353)
+@export var arc_colour: Color = Color(Palette.PLAYER, 0.55)
+@export var cardinal_colour: Color = Palette.PLAYER
 @export var centre_colour: Color = Color(1.0, 1.0, 1.0, 0.9)
 
 ## Lock ring colour when the target is a Barnacle rather than an enemy.
-@export var barnacle_lock_colour: Color = Color(0.62, 0.82, 0.23)
+@export var barnacle_lock_colour: Color = Palette.BARNACLE
 
 ## Cardinal bearings, in world degrees clockwise from north. North is world -Z.
 const CARDINALS: Dictionary = {

@@ -8,7 +8,7 @@ extends Node3D
 @export var flame_colour: Color = Color(1.0, 0.30, 0.10)
 
 ## Colour the ribbon fades to along its length, as the exhaust cools.
-@export var ember_colour: Color = Color(0.65, 0.12, 0.03)
+@export var ember_colour: Color = Palette.THRUST
 
 ## How many past positions the ribbon spans.
 @export var trail_points: int = 18
