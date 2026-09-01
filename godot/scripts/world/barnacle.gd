@@ -14,8 +14,8 @@ const GROUP: String = "barnacles"
 ## How many Meta-Alloys are left in this Barnacle.
 @export var reserve: float = 120.0
 
-## The reserve it started with.
-@export var initial_reserve: float = 120.0
+## The reserve it started with, captured in [method _ready].
+var _initial_reserve: float = 0.0
 
 ## How close a drone must be to draw from it.
 @export var harvest_radius: float = 6.0
@@ -39,7 +39,7 @@ var _lease: float = 0.0
 
 func _ready() -> void:
 	add_to_group(GROUP)
-	initial_reserve = reserve
+	_initial_reserve = reserve
 
 
 ## Take up to [param amount] alloys, returning how much was actually taken.
@@ -90,9 +90,9 @@ func release(drone: Drone) -> void:
 
 ## How full this Barnacle is, from 0.0 to 1.0.
 func fullness() -> float:
-	if initial_reserve <= 0.0:
+	if _initial_reserve <= 0.0:
 		return 0.0
-	return clampf(reserve / initial_reserve, 0.0, 1.0)
+	return clampf(reserve / _initial_reserve, 0.0, 1.0)
 
 
 ## The nearest Barnacle with alloys left, or null when the belt is stripped.

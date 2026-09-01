@@ -76,11 +76,19 @@ func _collect_behaviours() -> void:
 
 
 ## Weighted truncated sum of the child behaviours.
+## is_finite, not is_nan: NaN or infinity in the running sum makes every
+## later max_force comparison false, so limit_length silently stops limiting.
 func calculate_force() -> Vector3:
 	var total := Vector3.ZERO
 	for behaviour in behaviours:
-		if behaviour.enabled:
-			total += behaviour.calculate() * behaviour.weight
+		if not behaviour.enabled:
+			continue
+
+		var weighted: Vector3 = behaviour.calculate() * behaviour.weight
+		if not weighted.is_finite():
+			weighted = Vector3.ZERO
+
+		total += weighted
 	return total.limit_length(max_force)
 
 

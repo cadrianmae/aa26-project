@@ -32,7 +32,7 @@ extends SteeringBehaviour
 
 ## Noise frequency. Larger makes the field vary faster in space, which here
 ## means faster in TIME, since the sample walks along one axis.
-@export var noise_frequency: float = 0.5
+const NOISE_FREQUENCY: float = 0.5
 
 ## Each drone samples the same field at its own offset, so no two drift alike
 ## without needing a noise object each.
@@ -47,7 +47,7 @@ func _ready() -> void:
 	if _field == null:
 		_field = FastNoiseLite.new()
 		_field.noise_type = FastNoiseLite.TYPE_PERLIN
-		_field.frequency = noise_frequency
+		_field.frequency = NOISE_FREQUENCY
 	# Derived from the instance id: a stable per-unit number.
 	_offset = float(agent.get_instance_id() % 9973) * 0.37
 

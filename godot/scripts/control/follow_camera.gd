@@ -44,6 +44,7 @@ var target_yaw: float = 0.0
 
 func _ready() -> void:
 	zoom = _selected_zoom()
+	target_yaw = yaw
 
 
 func _unhandled_input(event: InputEvent) -> void:
