@@ -84,16 +84,10 @@ func _ensure_target_point() -> void:
 ##
 ## Called again whenever the target changes.
 func _point_arrive_at_barnacle() -> void:
-	if unit == null:
-		return
-	var arrive: ArriveBehaviour = unit.get_node_or_null(
-		NodePath(arrive_behaviour_name)
+	var arrive: ArriveBehaviour = behaviour_named(
+		arrive_behaviour_name
 	) as ArriveBehaviour
 	if arrive == null:
-		push_error(
-			"%s: no ArriveBehaviour named '%s' on %s."
-			% [name, arrive_behaviour_name, unit.name]
-		)
 		return
 	# Always the moving point, never the Barnacle itself: the point sits ON the
 	# Barnacle while this drone holds the claim and out on the waiting ring

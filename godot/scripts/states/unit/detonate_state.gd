@@ -42,8 +42,8 @@ func _acquire() -> void:
 	target = Swarm.nearest_hostile(
 		get_tree(), unit.global_position, 1 - unit.allegiance
 	)
-	var seek: SeekBehaviour = unit.get_node_or_null(
-		NodePath(seek_behaviour_name)
+	var seek: SeekBehaviour = behaviour_named(
+		seek_behaviour_name
 	) as SeekBehaviour
 	if seek != null:
 		seek.target = target

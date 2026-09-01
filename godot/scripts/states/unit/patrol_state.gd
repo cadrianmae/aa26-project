@@ -50,8 +50,8 @@ func _enter() -> void:
 	# The unit's own place on the circle, derived from its instance id.
 	_phase = float(unit.get_instance_id() % 360) * TAU / 360.0
 
-	var arrive: ArriveBehaviour = unit.get_node_or_null(
-		NodePath(arrive_behaviour_name)
+	var arrive: ArriveBehaviour = behaviour_named(
+		arrive_behaviour_name
 	) as ArriveBehaviour
 	if arrive != null:
 		arrive.target = point

@@ -60,18 +60,11 @@ func _point_seek_at_target() -> void:
 
 ## Point the seek behaviour at any node.
 func _point_seek_at(destination: Node3D) -> void:
-	if unit == null:
-		return
-	var seek: SeekBehaviour = unit.get_node_or_null(
-		NodePath(seek_behaviour_name)
+	var seek: SeekBehaviour = behaviour_named(
+		seek_behaviour_name
 	) as SeekBehaviour
-	if seek == null:
-		push_error(
-			"%s: no SeekBehaviour named '%s' on %s."
-			% [name, seek_behaviour_name, unit.name]
-		)
-		return
-	seek.target = destination
+	if seek != null:
+		seek.target = destination
 
 
 ## Choose the nearest enemy drone or capital ship within reach.

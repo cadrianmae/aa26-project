@@ -26,18 +26,11 @@ func _enter() -> void:
 
 ## Aim the unit's ArriveBehaviour at its own hatchery.
 func _point_arrive_at_hatchery() -> void:
-	if unit == null:
-		return
-	var arrive: ArriveBehaviour = unit.get_node_or_null(
-		NodePath(arrive_behaviour_name)
+	var arrive: ArriveBehaviour = behaviour_named(
+		arrive_behaviour_name
 	) as ArriveBehaviour
-	if arrive == null:
-		push_error(
-			"%s: no ArriveBehaviour named '%s' on %s."
-			% [name, arrive_behaviour_name, unit.name]
-		)
-		return
-	arrive.target = _hatchery
+	if arrive != null:
+		arrive.target = _hatchery
 
 
 func _think() -> void:

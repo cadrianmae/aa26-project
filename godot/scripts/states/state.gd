@@ -45,3 +45,22 @@ func use_only(behaviour_names: Array) -> void:
 			behaviour_names.has(behaviour.name)
 			or ALWAYS_ON.has(behaviour.name)
 		)
+
+
+## The steering behaviour named [param behaviour_name] on the unit, or null.
+##
+## Reports a missing behaviour rather than returning null silently: a state
+## that cannot find the node it steers with does nothing at all, which is
+## indistinguishable from the state simply not running.
+func behaviour_named(behaviour_name: String) -> SteeringBehaviour:
+	if unit == null:
+		return null
+	var behaviour: SteeringBehaviour = unit.get_node_or_null(
+		NodePath(behaviour_name)
+	) as SteeringBehaviour
+	if behaviour == null:
+		push_error(
+			"%s: no steering behaviour named '%s' on %s."
+			% [name, behaviour_name, unit.name]
+		)
+	return behaviour

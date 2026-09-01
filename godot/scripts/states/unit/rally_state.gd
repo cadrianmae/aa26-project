@@ -17,15 +17,8 @@ func _enter() -> void:
 
 ## Aim the unit's ArriveBehaviour at the rally marker.
 func _point_arrive_at_marker() -> void:
-	if unit == null:
-		return
-	var arrive: ArriveBehaviour = unit.get_node_or_null(
-		NodePath(arrive_behaviour_name)
+	var arrive: ArriveBehaviour = behaviour_named(
+		arrive_behaviour_name
 	) as ArriveBehaviour
-	if arrive == null:
-		push_error(
-			"%s: no ArriveBehaviour named '%s' on %s."
-			% [name, arrive_behaviour_name, unit.name]
-		)
-		return
-	arrive.target = RallyMarker.for_swarm(get_tree(), unit.allegiance)
+	if arrive != null:
+		arrive.target = RallyMarker.for_swarm(get_tree(), unit.allegiance)
