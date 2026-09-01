@@ -21,8 +21,8 @@ extends Control
 
 @export_group("Text")
 
-@export var victory_text: String = "SWARM ASCENDANT"
-@export var defeat_text: String = "HIVE COLLAPSED"
+@export var victory_text: String = "VICTORY"
+@export var defeat_text: String = "DEFEAT"
 
 ## The smaller line under the result.
 @export var victory_subtitle: String = "the belt is yours"
