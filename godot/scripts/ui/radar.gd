@@ -79,6 +79,9 @@ extends Control
 ## half circle however it was tuned.
 @export var arc_screen_span_degrees: float = 104.0
 
+## Colour of the north marker on the disc rim.
+@export var north_colour: Color = Color(0.851, 0.643, 0.255)
+
 @export_group("Speed bar")
 
 ## How many segments the speed bar is cut into.
@@ -172,6 +175,14 @@ func _process(_delta: float) -> void:
 ## project has been bitten by that three times.
 func _resolve() -> void:
 	var tree: SceneTree = get_tree()
+	# Cleared when freed, not merely when null. A commander is removed from
+	# the scene on death now, and a cached reference to a freed node is NOT
+	# null -- reading global_position off one throws. Clearing it here also
+	# lets the lookup below find a replacement if one ever exists.
+	if _ship != null and not is_instance_valid(_ship):
+		_ship = null
+	if _camera != null and not is_instance_valid(_camera):
+		_camera = null
 	if _ship == null:
 		_ship = tree.get_first_node_in_group("commander_" + str(allegiance)) as Node3D
 	if _field == null:
@@ -199,10 +210,59 @@ func _squash() -> float:
 	return cos(deg_to_rad(tilt_degrees))
 
 
+## How far the disc is turned, in radians.
+##
+## Camera-relative rather than world-aligned: the disc turns as the camera
+## does, so "up" on the scope is always the direction the player is looking.
+## A world-aligned scope forces the player to redo that rotation in their head
+## on every yaw, which is exactly the work an instrument should do for them.
+##
+## No half-turn offset: with the east-west mirror in [method _position_to_disc]
+## the scope already reads the right way up, and the extra 180 an earlier
+## version carried put it back upside down. A mirror and a half turn are easy
+## to confuse for one another when only one heading is checked -- they differ
+## on the OTHER axis, which is why this needed both a mirror and no rotation
+## rather than one or the other.
+func _disc_turn() -> float:
+	return -deg_to_rad(_camera_heading())
+
+
+## A world POSITION, in disc space, before the squash.
+##
+## World XZ straight through, turned by the camera heading and nothing else.
+##
+## Neither axis is negated, and that matters beyond tidiness: no negation means
+## no reflection, so the scope keeps the handedness of the world and a heading
+## run through it swings the same way the ship does. Every version of this that
+## mirrored ONE axis needed a second correction somewhere else to undo the
+## reversed turn sense; this needs none, which is why
+## [method _direction_to_disc] can simply defer to it.
+func _position_to_disc(x: float, z: float) -> Vector2:
+	return Vector2(x, z).rotated(_disc_turn())
+
+
+## A world DIRECTION, in disc space, before the squash.
+##
+## The SAME mapping as [method _position_to_disc], and that is the point: a
+## heading has to land where the place it points to lands, or the player's
+## arrow disagrees with the contact they are flying at.
+##
+## Kept as its own function despite being identical, because the two are asked
+## different questions -- "where is this thing" and "which way is this facing"
+## -- and an earlier version did make them differ. It did not survive contact
+## with the ship's own debug readout: the arrow ran backwards, moving 70
+## degrees anticlockwise for every 90 the ship turned clockwise.
+func _direction_to_disc(x: float, z: float) -> Vector2:
+	return _position_to_disc(x, z)
+
+
 ## World position to a point on the tilted disc.
 func _to_disc(world: Vector3) -> Vector2:
 	var radius: float = _disc_radius()
-	var offset: Vector2 = Vector2(world.x, world.z) / world_radius * radius
+	# _position_to_disc has already turned it. Rotating again here would apply
+	# the camera heading TWICE, which is what left the contacts a half turn
+	# away from the arrow.
+	var offset: Vector2 = _position_to_disc(world.x, world.z) / world_radius * radius
 	# Clamp to the rim rather than letting contacts escape the scope: an
 	# instrument that draws outside its own bezel reads as broken.
 	if offset.length() > radius:
@@ -213,6 +273,7 @@ func _to_disc(world: Vector3) -> Vector2:
 func _draw() -> void:
 	_resolve()
 	_draw_disc()
+	_draw_north()
 	_draw_contacts()
 	# After the contacts, so the lock ring sits ON the blip rather than under
 	# it, and before the arc so the rim furniture stays on top.
@@ -474,7 +535,8 @@ func _draw_ship() -> void:
 	# +Z is forward in this codebase, following Duggan. Vector3.FORWARD is -Z
 	# and would draw the marker pointing backwards.
 	var heading: Vector3 = _ship.global_transform.basis.z
-	var facing: Vector2 = Vector2(heading.x, heading.z * _squash())
+	var facing: Vector2 = _direction_to_disc(heading.x, heading.z)
+	facing = Vector2(facing.x, facing.y * _squash())
 	if facing.length() < 0.001:
 		facing = Vector2.UP
 	facing = facing.normalized()
@@ -489,11 +551,27 @@ func _draw_ship() -> void:
 	)
 
 
-## The camera's heading in degrees, 0 at north, increasing clockwise.
+## The camera's heading in degrees, 0 at north (-Z), increasing clockwise
+## through east (+X).
+##
+## Measured from where the camera is ACTUALLY looking, not from the rig's yaw
+## property. Those are not the same thing: the camera sits at an offset and
+## aims back at the ship, so its true bearing differs from its yaw by an amount
+## that changes as it turns. Measured against the rig's yaw the arc was out by
+## -155, +49, -160 and +20 degrees at the four cardinal settings -- not a
+## constant offset, so no single correction could have fixed it.
+##
+## Reading the basis instead makes the heading mean what the player sees,
+## which is the only definition the compass can usefully have.
 func _camera_heading() -> float:
 	if _camera == null:
 		return 0.0
-	return fposmod(rad_to_deg(_camera.yaw), 360.0)
+	var forward: Vector3 = -_camera.global_basis.z
+	forward.y = 0.0
+	if forward.length_squared() < 0.0001:
+		return 0.0
+	# atan2(x, -z): north is -Z and bearings increase clockwise toward +X east.
+	return fposmod(rad_to_deg(atan2(forward.x, -forward.z)), 360.0)
 
 
 ## Screen position on the heading arc for a world bearing, or a null vector
@@ -584,3 +662,38 @@ func _draw_arc_pips() -> void:
 		if point == Vector2.INF:
 			continue
 		draw_circle(point, 2.0, target[1])
+
+
+## A marker on the disc rim showing which way world north lies.
+##
+## Necessary BECAUSE the disc turns with the camera. A world-aligned scope has
+## north permanently at the top and needs no marker; a camera-relative one is
+## easier to fly by but loses any absolute reference, so the player can no
+## longer say where they are on the map. This is that reference put back --
+## the one fixed thing on a display that otherwise moves with the player.
+##
+## North is -Z. This codebase treats +Z as forward, so a contact due north of
+## the ship sits at negative Z, which maps to the top of an unrotated disc.
+func _draw_north() -> void:
+	var radius: float = _disc_radius()
+	var squash: float = _squash()
+	# Through the POSITION mapping, not the direction one: this marks where a
+	# contact due north would appear, which is a place on the disc rather than
+	# a heading. The two agree here anyway -- north is pure -Z, so the negated
+	# X that separates them has nothing to act on -- but saying which is meant
+	# keeps the marker correct if the mapping ever changes.
+	var direction: Vector2 = _position_to_disc(0.0, -1.0)
+	var at: Vector2 = _disc_centre() + Vector2(
+		direction.x * radius, direction.y * radius * squash
+	)
+
+	# A tick pointing outward along the same bearing, so the marker reads as
+	# belonging to the rim rather than floating beside it.
+	var outward: Vector2 = Vector2(direction.x, direction.y * squash).normalized()
+	draw_line(at - outward * 2.0, at + outward * 4.0, north_colour, 1.0)
+
+	var label_at: Vector2 = at + outward * 11.0
+	draw_string(
+		_font, label_at + Vector2(-3.0, 3.0), "N",
+		HORIZONTAL_ALIGNMENT_LEFT, -1, 8, north_colour
+	)
