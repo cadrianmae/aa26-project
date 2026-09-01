@@ -44,6 +44,13 @@ signal died(unit: Drone)
 ## apply. 180 removes the limit.
 @export_range(10.0, 180.0) var max_steer_angle: float = 90.0
 
+## How far from its own commander a drone will accept a target, in world units.
+##
+## Measured from the commander rather than from the drone: measured from the
+## drone, each new target extends the range it can see the next one from, and
+## the swarm walks off the map one acquisition at a time.
+@export var vision_range: float = 420.0
+
 @export_group("Combat")
 
 ## Current health. Corrosion and enemy fire reduce it.

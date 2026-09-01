@@ -224,6 +224,16 @@ func _draw_gizmos() -> void:
 			)
 
 
+## The commander of [param allegiance], or null when it is dead.
+static func commander_of(tree: SceneTree, allegiance_id: int) -> Node3D:
+	var node: Node = tree.get_first_node_in_group(
+		Ship.GROUP_PREFIX + str(allegiance_id)
+	)
+	if node == null or not is_instance_valid(node):
+		return null
+	return node as Node3D
+
+
 ## Every live commander and drone belonging to [param enemy_allegiance].
 ##
 ## Drones are reached through their Swarm rather than a group: they never join

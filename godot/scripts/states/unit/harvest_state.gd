@@ -160,14 +160,14 @@ func _designated() -> Barnacle:
 		if chosen != null and is_instance_valid(chosen) and not chosen.is_spent():
 			return chosen
 
-	# Nearest to the COMMANDER, not to this drone.
+	# Nearest to the COMMANDER, not to this drone, and inside the drone's
+	# vision range of it, so the swarm works rocks near home rather than the
+	# nearest one anywhere in the belt.
 	var from: Vector3 = unit.global_position
-	var commander: Node3D = get_tree().get_first_node_in_group(
-		Ship.GROUP_PREFIX + str(unit.allegiance)
-	) as Node3D
-	if commander != null and is_instance_valid(commander):
+	var commander: Node3D = Swarm.commander_of(get_tree(), unit.allegiance)
+	if commander != null:
 		from = commander.global_position
-	return Barnacle.nearest_to(get_tree(), from)
+	return Barnacle.nearest_to(get_tree(), from, unit.vision_range)
 
 
 ## Whether the drone is close enough to draw from [member barnacle].

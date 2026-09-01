@@ -110,19 +110,20 @@ func acquire() -> Node3D:
 	return target
 
 
-## The enemy commander at any distance, or null if it is already dead.
+## The enemy commander, when it is within the drone's vision range of its own
+## commander. Null when it is dead, or too far to be worth leaving home for.
 func _enemy_commander(enemy: int) -> Node3D:
-	var closest: Node3D = null
-	var closest_distance: float = INF
-	for node in get_tree().get_nodes_in_group(Ship.GROUP_PREFIX + str(enemy)):
-		var ship: Node3D = node as Node3D
-		if ship == null or not is_instance_valid(ship):
-			continue
-		var distance: float = unit.global_position.distance_to(ship.global_position)
-		if distance < closest_distance:
-			closest_distance = distance
-			closest = ship
-	return closest
+	var hostile: Node3D = Swarm.commander_of(get_tree(), enemy)
+	if hostile == null:
+		return null
+
+	var home: Node3D = Swarm.commander_of(get_tree(), unit.allegiance)
+	var from: Vector3 = (
+		home.global_position if home != null else unit.global_position
+	)
+	if from.distance_to(hostile.global_position) > unit.vision_range:
+		return null
+	return hostile
 
 
 func _think() -> void:

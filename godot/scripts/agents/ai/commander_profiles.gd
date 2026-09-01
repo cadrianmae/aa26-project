@@ -13,6 +13,8 @@
 ##   barnacle_distance 0.0 on top of it, 1.0 at the edge of harvest_range
 ##   has_enemy         1.0 when an enemy commander is known, else 0.0
 ##   enemy_distance    0.0 alongside it, 1.0 at the edge of harvest_range
+##   firepower_ratio   0.5 evenly matched, above 0.5 this commander is ahead,
+##                     counting only what is inside scouting_range
 ##
 ## Curves: LINEAR, INVERSE, QUADRATIC, INVERSE_QUADRATIC, THRESHOLD.
 class_name CommanderProfiles
@@ -98,6 +100,19 @@ static func escalating() -> UtilityProfile:
 				&"enemy_distance", INVERSE,
 				0.0, 1.0, 0.5, 0.35
 			),
+			# Zero at or below an even match, full only at a clear advantage.
+			# No floor, so being outgunned vetoes the attack outright.
+			need(&"firepower_ratio", LINEAR, 0.5, 0.8),
+		],
+
+		# RALLY -- withdraw to the rally point. Where an outgunned hive goes
+		# instead of attacking.
+		Swarm.Intent.RALLY: [
+			# Only against a force it can actually see.
+			need(&"has_enemy", THRESHOLD),
+			# The mirror of ENGAGE's test: rises as the odds worsen, zero once
+			# the hive is even with its enemy.
+			need(&"firepower_ratio", INVERSE, 0.2, 0.5),
 		],
 
 		# HOLD -- retreat, and the last resort when everything else is vetoed.

@@ -19,6 +19,18 @@ signal decided(intent: Swarm.Intent)
 ## How far from its own hatchery the AI will send drones to harvest.
 @export var harvest_range: float = 700.0
 
+## How far this commander can see enemy forces, in world units. Anything
+## beyond this is not counted by [method firepower_ratio].
+@export var scouting_range: float = 500.0
+
+## What one drone is worth when weighing two forces, in the same units as hull
+## health. Above a drone's own 100 health, because a drone also detonates when
+## it dies.
+@export var drone_strength: float = 160.0
+
+## How far from the enemy a withdrawal falls back, in world units.
+@export var retreat_distance: float = 260.0
+
 ## Below this many drones the hatchery is considered too weak to fight.
 @export var minimum_war_swarm: int = 14
 
@@ -177,15 +189,25 @@ func nearest_enemy() -> Node3D:
 
 ## Where a RALLY order should send this swarm.
 ##
-## The nearest worthwhile Barnacle if there is one, otherwise the commander's
-## own position, so a rally never sends the swarm to the world origin.
+## Directly away from the enemy while outgunned, so a rally reads as a retreat
+## rather than a regroup. Otherwise the nearest worthwhile Barnacle, and
+## failing that the commander itself, so a rally never sends the swarm to the
+## world origin.
 func rally_point() -> Vector3:
+	if ship == null:
+		return Vector3.ZERO
+
+	var enemy: Node3D = nearest_enemy()
+	if enemy != null and firepower_ratio() < 0.5:
+		var away: Vector3 = ship.global_position - enemy.global_position
+		away.y = 0.0
+		if away.length_squared() > 0.0001:
+			return ship.global_position + away.normalized() * retreat_distance
+
 	var barnacle: Barnacle = nearest_barnacle()
 	if barnacle != null:
 		return barnacle.global_position
-	if ship != null:
-		return ship.global_position
-	return Vector3.ZERO
+	return ship.global_position
 
 
 ## Everything the profile can reason about, normalised to 0..1.
@@ -239,7 +261,39 @@ func gather_inputs() -> Dictionary:
 		&"barnacle_distance": barnacle_distance,
 		&"has_enemy": 1.0 if enemy != null else 0.0,
 		&"enemy_distance": enemy_distance,
+		&"firepower_ratio": firepower_ratio(),
 	}
+
+
+## This commander's strength against the enemy's, from 0.0 to 1.0.
+##
+## 0.5 means evenly matched, above that this commander is ahead. Only counts
+## what is within [member scouting_range] of this commander: a hive cannot
+## reason about a force it has not seen.
+##
+## Returns 0.5 when there is nothing to compare against, so an unseen enemy
+## neither invites an attack nor triggers a retreat.
+func firepower_ratio() -> float:
+	if ship == null:
+		return 0.5
+
+	var mine: float = ship.health + float(swarm_size()) * drone_strength
+
+	var from: Vector3 = ship.global_position
+	var theirs: float = 0.0
+	var seen: int = 0
+	for hostile in Swarm.hostiles_of(get_tree(), 1 - allegiance):
+		if from.distance_to(hostile.global_position) > scouting_range:
+			continue
+		seen += 1
+		if hostile is Ship:
+			theirs += (hostile as Ship).health
+		else:
+			theirs += drone_strength
+
+	if seen == 0 or mine + theirs <= 0.0:
+		return 0.5
+	return clampf(mine / (mine + theirs), 0.0, 1.0)
 
 
 ## Choose what this hatchery should be doing.

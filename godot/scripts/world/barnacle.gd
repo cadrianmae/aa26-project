@@ -96,10 +96,16 @@ func fullness() -> float:
 
 
 ## The nearest Barnacle with alloys left, or null when the belt is stripped.
-static func nearest_to(tree: SceneTree, point: Vector3) -> Barnacle:
+static func nearest_to(
+	tree: SceneTree, point: Vector3, max_distance: float = INF
+) -> Barnacle:
 	var best: Barnacle = null
-	var best_distance: float = INF
+	var best_distance: float = (
+		INF if is_inf(max_distance) else max_distance * max_distance
+	)
 	for node in tree.get_nodes_in_group(GROUP):
+		if not is_instance_valid(node):
+			continue
 		var barnacle: Barnacle = node as Barnacle
 		if barnacle == null or barnacle.is_spent():
 			continue

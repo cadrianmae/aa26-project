@@ -12,7 +12,7 @@ extends State
 @export var engage_state_name: String = "Engage"
 
 ## Radius of the patrol circle around the commander.
-@export var patrol_radius: float = 60.0
+@export var patrol_radius: float = 45.0
 
 ## How fast the circle turns, in radians per second.
 @export var orbit_speed: float = 0.35
