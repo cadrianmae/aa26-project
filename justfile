@@ -16,10 +16,14 @@ build: build-linux build-windows
 
 # Export the Linux release.
 build-linux:
+    # mkdir first: Godot's export does not create a missing output directory,
+    # it just fails to write the binary and still reports success.
+    mkdir -p {{ build_dir }}/linux
     {{ godot }} --export-release "Linux"
 
 # Export the Windows release.
 build-windows:
+    mkdir -p {{ build_dir }}/windows
     {{ godot }} --export-release "Windows Desktop"
 
 # Reimport assets and rebuild the global class-name cache.
