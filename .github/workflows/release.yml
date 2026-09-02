@@ -1,0 +1,93 @@
+name: Release builds
+
+# Tagging is the trigger, so a release is cut deliberately rather than on
+# every push to the branch.
+on:
+  push:
+    tags:
+      - "v*"
+
+# Needed to create the release and upload the binaries to it.
+permissions:
+  contents: write
+
+env:
+  GODOT_VERSION: 4.7.1
+
+jobs:
+  export:
+    name: Export Linux and Windows
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Install Godot and the export templates
+        run: |
+          set -euo pipefail
+          base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
+          curl -fsSL -o godot.zip \
+            "${base}/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          curl -fsSL -o templates.tpz \
+            "${base}/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+
+          unzip -q godot.zip
+          sudo install -m 755 "Godot_v${GODOT_VERSION}-stable_linux.x86_64" /usr/local/bin/godot
+
+          # The .tpz is a zip whose contents must land in a directory named for
+          # the exact version, or the export reports "no export template found".
+          unzip -q templates.tpz
+          target="${HOME}/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
+          mkdir -p "${target}"
+          mv templates/* "${target}/"
+
+          godot --version
+
+      - name: Import assets
+        # A fresh checkout has no .godot/ directory. Importing first builds the
+        # asset cache and the global class-name registry; exporting straight
+        # away has failed on this project before.
+        run: godot --headless --path godot --import
+
+      - name: Export both platforms
+        run: |
+          set -euo pipefail
+          godot --headless --path godot --export-release "Linux"
+          godot --headless --path godot --export-release "Windows Desktop"
+
+      - name: Check the binaries exist
+        # The export prints [ DONE ] and still exits 0 when a preset is
+        # misnamed, so the artefacts are what gets verified, not the exit code.
+        run: |
+          set -euo pipefail
+          test -s godot/build/linux/matriarch-command.x86_64
+          test -s godot/build/windows/matriarch-command.exe
+          ls -la godot/build/linux godot/build/windows
+
+      - name: Package each platform
+        # Zipped as a directory rather than shipping bare binaries: the
+        # debug_draw_3d GDExtension is loaded from beside the executable, and a
+        # binary downloaded on its own dies the first time an agent draws.
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          mkdir -p dist
+          (cd godot/build/linux && zip -qr "${GITHUB_WORKSPACE}/dist/matriarch-command-${tag}-linux-x86_64.zip" .)
+          (cd godot/build/windows && zip -qr "${GITHUB_WORKSPACE}/dist/matriarch-command-${tag}-windows-x86_64.zip" .)
+          ls -la dist
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          # The tag may have been pushed without a release, or a draft release
+          # may already exist; create only when there is nothing there.
+          if ! gh release view "${tag}" >/dev/null 2>&1; then
+            gh release create "${tag}" \
+              --title "Matriarch Command ${tag}" \
+              --generate-notes
+          fi
+          gh release upload "${tag}" dist/*.zip --clobber
