@@ -13,7 +13,6 @@ godot/data_*/
 
 # Godot export artefacts
 godot/build/
-godot/export_presets.cfg
 
 # Audio source material: source MIDI files and intermediate WAV renders are
 # kept out of the repo. Only the final rendered Ogg Vorbis file is committed.
