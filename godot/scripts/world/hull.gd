@@ -112,8 +112,12 @@ func _build_solid_mesh() -> ArrayMesh:
 ## Lighting alone does not separate adjacent facets on a cone, because their
 ## normals are nearly identical. Varying the base colour per face does.
 func _facet_shade(face_index: int) -> float:
-	# TODO(human)
-	return 1.0
+	if facet_shade_spread <= 0.0:
+		return 1.0
+	# Hashed rather than cycled: a repeating pattern lines up with the hull's
+	# own symmetry and reads as banding.
+	var hashed: float = fposmod(sin(float(face_index) * 12.9898) * 43758.5453, 1.0)
+	return 1.0 - hashed * facet_shade_spread
 
 
 ## Assemble the line mesh for [member hull_shape].
