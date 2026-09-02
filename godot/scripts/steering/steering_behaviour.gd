@@ -18,6 +18,10 @@
 class_name SteeringBehaviour
 extends Node
 
+## Speed above which braking escapes the steering arc, in world units per
+## second. See [method limit_to_arc].
+const BRAKING_EXEMPT_SPEED: float = 6.0
+
 ## When false the agent skips this behaviour entirely. Toggle in the Inspector
 ## to isolate one behaviour while debugging.
 @export var enabled: bool = true
@@ -113,8 +117,12 @@ static func children_of(node: Node) -> Array[SteeringBehaviour]:
 ## side of the agent's nose, leaving it untouched when already inside the arc.
 ##
 ## [param basis] is the agent's global basis; +Z is the nose in this codebase,
-## not Vector3.FORWARD. Braking is exempt: thrust opposing [param velocity] is
-## returned unclamped.
+## not Vector3.FORWARD.
+##
+## Braking is exempt above [constant BRAKING_EXEMPT_SPEED]: thrust opposing
+## [param velocity] is returned unclamped, so an agent can always kill real
+## speed. Below that the exemption does not apply, or an agent barely drifting
+## would be allowed to thrust anywhere it liked.
 static func limit_to_arc(
 	desired: Vector3,
 	basis: Basis,
@@ -136,7 +144,8 @@ static func limit_to_arc(
 	if absf(offset) <= limit:
 		return desired
 
-	if velocity.length_squared() > 0.01 and desired.dot(velocity) < 0.0:
+	var speed: float = velocity.length()
+	if speed > BRAKING_EXEMPT_SPEED and desired.dot(velocity) < 0.0:
 		return desired
 
 	return nose.rotated(Vector3.UP, clampf(offset, -limit, limit)) * desired.length()
