@@ -53,6 +53,10 @@ jobs:
       - name: Export both platforms
         run: |
           set -euo pipefail
+          # build/ is git-ignored, so a fresh checkout has no output directory.
+          # Godot does not create one -- it fails with "The given export path
+          # doesn't exist".
+          mkdir -p godot/build/linux godot/build/windows
           godot --headless --path godot --export-release "Linux"
           godot --headless --path godot --export-release "Windows Desktop"
 
