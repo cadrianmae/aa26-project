@@ -49,7 +49,9 @@ var behaviours: Array[SteeringBehaviour] = []
 var force: Vector3 = Vector3.ZERO
 
 ## Seconds since this ship was last hit, for the regen delay.
-var _since_damage: float = 999.0
+## Seconds since this ship was last hit. Read by [CommanderAI] to decide
+## whether the hive has been provoked.
+var since_damage: float = 999.0
 
 ## Latched once the hull is destroyed, so death resolves exactly once.
 var _destroyed: bool = false
@@ -175,7 +177,7 @@ func take_damage(amount: float) -> void:
 	if _destroyed:
 		return
 	health -= amount
-	_since_damage = 0.0
+	since_damage = 0.0
 	if health > 0.0:
 		return
 
@@ -209,9 +211,9 @@ func _die() -> void:
 
 ## Repair the hull once the ship has been left alone long enough.
 func _regenerate(delta: float) -> void:
-	_since_damage += delta
+	since_damage += delta
 	if _destroyed or health <= 0.0 or max_health <= 0.0:
 		return
-	if _since_damage < regen_delay or health >= max_health:
+	if since_damage < regen_delay or health >= max_health:
 		return
 	health = minf(health + regen_per_second * delta, max_health)

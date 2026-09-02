@@ -19,9 +19,13 @@ signal decided(intent: Swarm.Intent)
 ## How far from its own hatchery the AI will send drones to harvest.
 @export var harvest_range: float = 700.0
 
-## How far this commander can see enemy forces, in world units. Anything
-## beyond this is not counted by [method firepower_ratio].
-@export var scouting_range: float = 500.0
+## How far this commander can see enemy forces, in world units.
+##
+## Matches the player's radar range, so the two sides see each other on the
+## same terms. Everything that reasons about the enemy -- has_enemy,
+## enemy_distance and firepower_ratio -- is bounded by this, so "seen" means
+## one thing across the whole profile.
+@export var scouting_range: float = 1000.0
 
 ## What one drone is worth when weighing two forces, in the same units as hull
 ## health. Above a drone's own 100 health, because a drone also detonates when
@@ -32,7 +36,26 @@ signal decided(intent: Swarm.Intent)
 @export var retreat_distance: float = 260.0
 
 ## Below this many drones the hatchery is considered too weak to fight.
-@export var minimum_war_swarm: int = 14
+@export var minimum_war_swarm: int = 9
+
+## How far short of the enemy a PATROL order stops, in world units.
+@export var patrol_standoff: float = 220.0
+
+## Seconds after being hit that the hive counts as provoked.
+@export var retaliation_seconds: float = 8.0
+
+## Firepower ratio below which the hive withdraws even when provoked. Being
+## shot at overrides caution, but not a hopeless mismatch.
+@export_range(0.0, 0.5) var severe_disadvantage: float = 0.25
+
+## War readiness and firepower a provoked hive is treated as having, so
+## retaliation is not vetoed by the gates that keep it patient when unharmed.
+##
+## Both sit at the top of their curves: ENGAGE's readiness gate is QUADRATIC,
+## so a middling value scores low enough that PATROL wins and the hive wanders
+## off while being shot at.
+@export_range(0.0, 1.0) var provoked_readiness: float = 1.0
+@export_range(0.5, 1.0) var provoked_firepower: float = 0.8
 
 ## Which personality to play with. See [CommanderProfiles].
 @export var profile_name: StringName = &"escalating"
@@ -63,6 +86,9 @@ var move_marker: Node3D
 ## The rival's own steering. Disabled in the scene, because the player's
 ## commander instances the SAME scene.
 var arrive: SteeringBehaviour
+
+## The ship's Weapon, resolved lazily on first fire.
+var _weapon: Weapon
 
 ## The commander's own ship health when first seen, so "hurt" is a proportion
 ## rather than a hard-coded number.
@@ -99,6 +125,9 @@ func _process(delta: float) -> void:
 	# frame every decision_interval would be unreadable.
 	_resolve()
 	_process_gizmos()
+	# Also every frame. Firing on decision_interval would leave the ship
+	# shooting once every 2.5 seconds regardless of its weapon's cooldown.
+	_fire_at_hostiles()
 
 	_since_decision += delta
 	if _since_decision < decision_interval:
@@ -170,13 +199,19 @@ func nearest_barnacle() -> Barnacle:
 	return Barnacle.nearest_to(get_tree(), from)
 
 
-## The nearest enemy unit, or null.
+## The nearest enemy commander within [member scouting_range], or null.
+##
+## Bounded by the same range as [method firepower_ratio]: an unbounded search
+## reported an enemy the hive could not measure, so has_enemy said "there is a
+## target" while firepower_ratio returned its neutral 0.5 and vetoed the attack.
 func nearest_enemy() -> Node3D:
 	var enemy: int = 1 - allegiance
 	var from: Vector3 = ship.global_position if ship != null else Vector3.ZERO
 	var closest: Node3D = null
-	var closest_distance: float = INF
+	var closest_distance: float = scouting_range
 	for node in get_tree().get_nodes_in_group(Ship.GROUP_PREFIX + str(enemy)):
+		if not is_instance_valid(node):
+			continue
 		var other: Node3D = node as Node3D
 		if other == null:
 			continue
@@ -252,6 +287,16 @@ func gather_inputs() -> Dictionary:
 			from.distance_to(enemy.global_position) / harvest_range, 0.0, 1.0
 		)
 
+	var firepower: float = firepower_ratio()
+
+	# Provocation raises the two inputs that would otherwise veto ENGAGE,
+	# rather than adding a consideration of its own. Considerations multiply,
+	# so an "under attack" term would veto attacking whenever the hive was NOT
+	# being shot at, which is the opposite of the intent.
+	if is_provoked(firepower):
+		war_readiness = maxf(war_readiness, provoked_readiness)
+		firepower = maxf(firepower, provoked_firepower)
+
 	return {
 		&"health": health,
 		&"swarm_fraction": swarm_fraction,
@@ -261,8 +306,17 @@ func gather_inputs() -> Dictionary:
 		&"barnacle_distance": barnacle_distance,
 		&"has_enemy": 1.0 if enemy != null else 0.0,
 		&"enemy_distance": enemy_distance,
-		&"firepower_ratio": firepower_ratio(),
+		&"firepower_ratio": firepower,
 	}
+
+
+## Whether the hive has been attacked recently and is not hopelessly outgunned.
+##
+## [param firepower] is the unshaped ratio from [method firepower_ratio].
+func is_provoked(firepower: float) -> bool:
+	if ship == null or ship.since_damage > retaliation_seconds:
+		return false
+	return firepower >= severe_disadvantage
 
 
 ## This commander's strength against the enemy's, from 0.0 to 1.0.
@@ -320,9 +374,60 @@ func move_destination(intent: Swarm.Intent) -> Vector3:
 			var enemy: Node3D = nearest_enemy()
 			if enemy != null:
 				return enemy.global_position
+		Swarm.Intent.PATROL:
+			return _patrol_destination()
+		Swarm.Intent.RALLY:
+			# Withdrawing has to move the SHIP, not just the swarm. Without
+			# this, RALLY fell through to the ship's own position and a fleeing
+			# commander stood still and died.
+			return rally_point()
 		Swarm.Intent.HOLD:
 			return ship.global_position
 
+	return ship.global_position
+
+
+## Shoot at the nearest hostile the ship's weapon can reach.
+##
+## The rival's trigger. [PlayerGunner] is guarded to allegiance 0 because both
+## hives instance one scene, so without this the rival carries a Weapon it can
+## never fire.
+func _fire_at_hostiles() -> void:
+	if ship == null or not is_instance_valid(ship):
+		return
+	if _weapon == null:
+		_weapon = ship.get_node_or_null("Weapon") as Weapon
+		if _weapon == null:
+			return
+	if not _weapon.is_ready():
+		return
+
+	var target: Node3D = Swarm.nearest_hostile(
+		get_tree(), ship.global_position, 1 - allegiance, _weapon.range
+	)
+	if target == null:
+		return
+	_weapon.fire_at(target)
+
+
+## Where a PATROL order sends the commander.
+##
+## Towards the enemy, stopping [member patrol_standoff] short of it: patrolling
+## is posturing, so the hive closes without committing. With no enemy in sight
+## it works the belt instead, because an intent that resolves to the ship's own
+## position leaves the commander standing still.
+func _patrol_destination() -> Vector3:
+	var enemy: Node3D = nearest_enemy()
+	if enemy != null:
+		var toward: Vector3 = enemy.global_position - ship.global_position
+		toward.y = 0.0
+		if toward.length() > patrol_standoff:
+			return enemy.global_position - toward.normalized() * patrol_standoff
+		return ship.global_position
+
+	var barnacle: Barnacle = nearest_barnacle()
+	if barnacle != null:
+		return barnacle.global_position
 	return ship.global_position
 
 

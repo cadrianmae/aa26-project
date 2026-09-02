@@ -14,7 +14,9 @@
 ##   has_enemy         1.0 when an enemy commander is known, else 0.0
 ##   enemy_distance    0.0 alongside it, 1.0 at the edge of harvest_range
 ##   firepower_ratio   0.5 evenly matched, above 0.5 this commander is ahead,
-##                     counting only what is inside scouting_range
+##                     counting only what is inside scouting_range. Raised
+##                     while the hive is provoked, so retaliation clears the
+##                     gates that keep it patient when unharmed.
 ##
 ## Curves: LINEAR, INVERSE, QUADRATIC, INVERSE_QUADRATIC, THRESHOLD.
 class_name CommanderProfiles
@@ -88,9 +90,11 @@ static func escalating() -> UtilityProfile:
 		# attacks the moment it can is an AI that dies early.
 		Swarm.Intent.ENGAGE: [
 			need(&"has_enemy", THRESHOLD),
-			# QUADRATIC and gated at 0.6: below that much of a swarm this is
+			# QUADRATIC and gated at 0.45: below that much of a swarm this is
 			# ZERO, not merely small, so a thin swarm cannot attack at all.
-			need(&"war_readiness", QUADRATIC, 0.6, 1.0),
+			# Matched to PATROL's own start, so there is no band of readiness
+			# where the hive is too strong to harvest and too weak to fight.
+			need(&"war_readiness", QUADRATIC, 0.45, 1.0),
 			# Prefers to pick the fight in good health, but will not refuse
 			# one outright -- hence the floor.
 			need(&"health", LINEAR, 0.25, 1.0, 0.5, 0.3),
@@ -100,9 +104,15 @@ static func escalating() -> UtilityProfile:
 				&"enemy_distance", INVERSE,
 				0.0, 1.0, 0.5, 0.35
 			),
-			# Zero at or below an even match, full only at a clear advantage.
-			# No floor, so being outgunned vetoes the attack outright.
-			need(&"firepower_ratio", LINEAR, 0.5, 0.8),
+			# Starts BELOW an even match, deliberately. Both hives field the
+			# same ship and the same drones, so a mirror start sits at exactly
+			# 0.5; a gate opening at 0.5 would forbid the rival from ever
+			# attacking until the player broke the symmetry first.
+			#
+			# Still zero once genuinely behind, and no floor, so being outgunned
+			# vetoes the attack -- unless provoked, which raises the input
+			# before it arrives here. See CommanderAI.is_provoked.
+			need(&"firepower_ratio", LINEAR, 0.42, 0.8),
 		],
 
 		# RALLY -- withdraw to the rally point. Where an outgunned hive goes
@@ -113,13 +123,20 @@ static func escalating() -> UtilityProfile:
 			# The mirror of ENGAGE's test: rises as the odds worsen, zero once
 			# the hive is even with its enemy.
 			need(&"firepower_ratio", INVERSE, 0.2, 0.5),
+			# A hurt commander runs. Floored, so this raises the urgency of a
+			# withdrawal without being required for one.
+			need(&"health", INVERSE_QUADRATIC, 0.0, 1.0, 0.5, 0.4),
 		],
 
-		# HOLD -- retreat, and the last resort when everything else is vetoed.
+		# HOLD -- the last resort when everything else is vetoed. HOLD keeps the
+		# commander where it stands, so it must lose to RALLY, which retreats.
 		Swarm.Intent.HOLD: [
-			# INVERSE_QUADRATIC: nearly nothing at full health, then rising
-			# sharply once the commander is genuinely in trouble.
-			need(&"health", INVERSE_QUADRATIC),
+			# Collapses once an enemy is in sight: standing still is only ever
+			# right when there is nothing to react to. Keyed on health alone
+			# this rose as the hive got hurt, so a dying commander held its
+			# ground instead of running.
+			need(&"has_enemy", INVERSE, 0.0, 1.0, 0.5, 0.2),
+			need(&"health", INVERSE, 0.0, 1.0, 0.5, 0.15),
 		],
 	}
 	return profile
