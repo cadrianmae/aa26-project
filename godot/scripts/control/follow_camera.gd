@@ -5,6 +5,13 @@ extends Camera3D
 ## The node to follow.
 @export var target: Node3D
 
+## The node the camera returns to when it stops watching the rival. Captured
+## from [member target] in [method _ready].
+var _home_target: Node3D
+
+## Whether the camera is currently on the rival commander.
+var watching_rival: bool = false
+
 ## Height above the movement plane.
 @export var height: float = 34.0
 
@@ -45,6 +52,7 @@ var target_yaw: float = 0.0
 func _ready() -> void:
 	zoom = _selected_zoom()
 	target_yaw = yaw
+	_home_target = target
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -58,6 +66,27 @@ func _unhandled_input(event: InputEvent) -> void:
 		_step_zoom(1)
 	elif event.is_action_pressed("zoom_cycle"):
 		zoom_index = (zoom_index + 1) % zoom_levels.size()
+	elif event.is_action_pressed("watch_rival"):
+		_toggle_rival()
+
+
+## Swap the camera between the player's ship and the rival commander.
+##
+## Resolved on each press rather than cached: the rival can be destroyed and,
+## with the debug camera on it, the view would otherwise follow a freed node.
+func _toggle_rival() -> void:
+	if watching_rival:
+		target = _home_target
+		watching_rival = false
+		DebugDraw2D.set_text("Camera", "")
+		return
+
+	var rival: Node3D = Swarm.commander_of(get_tree(), 1)
+	if rival == null:
+		return
+	target = rival
+	watching_rival = true
+	DebugDraw2D.set_text("Camera", "RIVAL")
 
 
 ## Move [member zoom_index] by [param step], clamped to the ends.
@@ -74,8 +103,15 @@ func _selected_zoom() -> float:
 
 
 func _physics_process(delta: float) -> void:
-	if target == null:
-		return
+	# is_instance_valid, not a null test: a freed node is not null, and the
+	# rival can be destroyed while the debug camera is watching it.
+	if not is_instance_valid(target):
+		if watching_rival:
+			target = _home_target
+			watching_rival = false
+			DebugDraw2D.set_text("Camera", "")
+		if not is_instance_valid(target):
+			return
 	# lerp_angle rather than lerp: it takes the shorter way round.
 	yaw = lerp_angle(yaw, target_yaw, minf(delta * yaw_speed, 1.0))
 	zoom = lerpf(zoom, _selected_zoom(), minf(delta * zoom_speed, 1.0))
