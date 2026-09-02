@@ -84,7 +84,9 @@ func _draw() -> void:
 	if not is_instance_valid(_ship):
 		return
 	if mode == Mode.OWN_SHIP:
-		_draw_panel("MATRIARCH", _hull_fraction(_ship), player_colour, _ship_points())
+		_draw_panel(
+			Strings.OWN_SHIP, _hull_fraction(_ship), player_colour, _ship_points()
+		)
 		return
 
 	# Target panel: silent when nothing is selected.
@@ -196,11 +198,11 @@ func _hull_fraction(ship: Ship) -> float:
 func _target_label() -> String:
 	match _targeting.kind:
 		Targeting.Kind.SHIP:
-			return "HOSTILE MATRIARCH"
+			return Strings.TARGET_SHIP
 		Targeting.Kind.SWARM:
-			return "HOSTILE SWARM"
+			return Strings.TARGET_SWARM
 		Targeting.Kind.BARNACLE:
-			return "BARNACLE"
+			return Strings.TARGET_BARNACLE
 	return ""
 
 

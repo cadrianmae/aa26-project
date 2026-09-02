@@ -55,7 +55,7 @@ func _draw() -> void:
 	var cost: float = maxf(_hatchery.drone_cost, 0.001)
 
 	draw_string(
-		_font, Vector2(6.0, 12.0), "ALLOY", HORIZONTAL_ALIGNMENT_LEFT, -1, 8,
+		_font, Vector2(6.0, 12.0), Strings.ALLOY, HORIZONTAL_ALIGNMENT_LEFT, -1, 8,
 		text_colour
 	)
 	var total: String = "%d" % floori(alloys)
@@ -88,6 +88,6 @@ func _draw() -> void:
 	var swarm_size: int = _swarm.units.size() if _swarm else 0
 	draw_string(
 		_font, Vector2(6.0, bar_top - 3.0),
-		"SWARM %d/%d" % [swarm_size, _hatchery.max_drones],
+		"%s %d/%d" % [Strings.SWARM, swarm_size, _hatchery.max_drones],
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 8, text_colour
 	)

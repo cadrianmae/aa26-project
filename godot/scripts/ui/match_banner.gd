@@ -21,12 +21,12 @@ extends Control
 
 @export_group("Text")
 
-@export var victory_text: String = "VICTORY"
-@export var defeat_text: String = "DEFEAT"
+@export var victory_text: String = Strings.VICTORY
+@export var defeat_text: String = Strings.DEFEAT
 
 ## The smaller line under the result.
-@export var victory_subtitle: String = "the belt is yours"
-@export var defeat_subtitle: String = "the Matriarch is lost"
+@export var victory_subtitle: String = Strings.VICTORY_SUBTITLE
+@export var defeat_subtitle: String = Strings.DEFEAT_SUBTITLE
 
 @export var title_size: int = 28
 @export var subtitle_size: int = 10

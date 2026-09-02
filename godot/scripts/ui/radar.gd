@@ -101,8 +101,10 @@ extends Control
 
 ## Cardinal bearings, in world degrees clockwise from north. North is world -Z.
 const CARDINALS: Dictionary = {
-	0.0: "N", 45.0: "NE", 90.0: "E", 135.0: "SE",
-	180.0: "S", 225.0: "SW", 270.0: "W", 315.0: "NW",
+	0.0: Strings.NORTH, 45.0: Strings.NORTH_EAST,
+	90.0: Strings.EAST, 135.0: Strings.SOUTH_EAST,
+	180.0: Strings.SOUTH, 225.0: Strings.SOUTH_WEST,
+	270.0: Strings.WEST, 315.0: Strings.NORTH_WEST,
 }
 
 ## How many segments approximate the disc and the arc.
