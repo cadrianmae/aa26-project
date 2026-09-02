@@ -6,6 +6,12 @@
 
 > A 1993-styled 2.5D real-time strategy game in which the player flies a living droneship, commands a swarm of autonomous drones, and fights a mirror AI hive for control of a debris field.
 
+## Demo
+
+[![Matriarch Command -- demo video](https://img.youtube.com/vi/9oysvpD3y6A/maxresdefault.jpg)](https://youtu.be/9oysvpD3y6A)
+
+Recorded from the exported build, not the editor: <https://youtu.be/9oysvpD3y6A>
+
 ---
 
 ## Concept
@@ -137,7 +143,7 @@ Tracked against `docs/assignment-spec.md`.
 ### Axis 3 -- Project management and documentation
 
 - 135 commits on a feature branch, using Conventional Commits throughout.
-- A public YouTube video, recorded from the build rather than the editor.
+- A public YouTube video, recorded from the build rather than the editor: <https://youtu.be/9oysvpD3y6A>
 - A reflective "What I Learned" section, below.
 - Sources and references recorded in [`ATTRIBUTIONS.md`](ATTRIBUTIONS.md).
 
